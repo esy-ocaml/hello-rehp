@@ -17,7 +17,7 @@ $codebg = #f7fafc
 $codeborder = #eceff3
 $grey = #909090
 $txt = #444444
-$txtlight = #555555
+$txtlight = #888888
 $accent = #556cd6 * 0.85
 $line = #e3e8ee 
 $headerbg = #fafafa 
@@ -29,6 +29,11 @@ $shadow-str = 0.1
 $sidebar-width = 230px
 $content-width = 550px
 $pre-width = 380px
+
+.medium-zoom-image
+  z-index:100
+.medium-zoom-overlay
+  z-index:100
 
 global-reset()
   h1, h2, h3, h4, h5, h6, p, blockquote, pre,
@@ -48,6 +53,8 @@ global-reset()
     border: 0
     outline: 0
   body
+    /** Needed for medium-zoom positioning */
+    position:relative;
     line-height: 1
     color: black
     background: white
@@ -100,20 +107,33 @@ antialias()
 
 global-reset()
 
-html, body
+html
   height: 100%
+  /* Messes up medium-zoom */
+  /* overflow-y:scroll */
 
+/*
+messes up medium-zoom
 body
   overflow-y:scroll
   overflow-x:hidden
+*/
 
 /*
  * jordwalke: Continues left parallel with a right docking, until the next
  * right docking. Requires a JS shim at document load time to
  * fix up the elements that occur before that next right docking,
  * because there is no CSS selector for "comes before".
+ * What about using:
+ *
+ * The following selector matches <h1> elements only if they have a <p> element
+ * directly following them:
+ * 
+ *   h1:has(+ p)
  * 
  * document.querySelectorAll(
+ *    '.content > img + pre,' +
+ *    '.content > img + blockquote,' +
  *    '.content > p + pre,' +
  *    '.content > p + blockquote,' +
  *    '.content > ul + pre,' +
@@ -163,6 +183,13 @@ a
  */
 
 .content
+  img
+    margin: 0
+    box-sizing: border-box
+
+  .imageContainer
+    margin: $vmargin 0
+
   p, ul, ol, h1, h2, h3, h4, h5, h6, pre, blockquote
     padding: $vmargin 0
     box-sizing: border-box
@@ -296,6 +323,39 @@ a
   min-height: 90%
   position: relative
 
+
+/* Shadow around image in literate right bar */
+/* Remove outline while animating open */
+/* It's still not enough to hide outline while closing */
+.medium-zoom--opened
+  .content
+    .imageContainer
+      &:after
+        box-shadow: none !important
+
+@media (min-width: 1180px) /* Big desktop */
+  body:not(.no-literate)
+    .content
+      blockquote
+        .imageContainer
+          /* So clicks pass through to image */
+          pointer-events: none
+          overflow:hidden;
+          display:inline-block;
+          position:relative;
+          border-radius:0px;
+          &:after
+            content: "";
+            position: absolute;
+            width: 100%; height: 100%;
+            left: 0; top: 0;
+            box-shadow: inset 0px 0px 0px 0.5px #55555511
+          img
+            vertical-align:middle;
+            /* Reenable pointer events */
+            pointer-events: auto
+      
+
 .content
   padding-top: $pad - $vmargin
   padding-bottom: $pad
@@ -303,11 +363,13 @@ a
   padding-right: $pad
   clearfix()
 
+  img
+    width: 100%
+
   max-width: 700px
 
   blockquote
     color: $grey
-    /* text-shadow: 0 1px 0 rgba(white, 0.5) */
 
   h1, h2, h3
     antialias()
@@ -556,9 +618,13 @@ pre > code
 // ----------------------------------------------------------------------------
 // Header
 
+.medium-zoom--opened > .header
+  /* Needs to be less than medium-zoom overlays */
+  z-index:50
+
 .header
   background: $headerbg
-  z-index:999
+  z-index:101
   /* text-shadow: 0 1px 0 rgba(white, 0.5) */
   border-bottom: solid 1px $line
   padding: 15px 15px 15px $sidepad
@@ -735,6 +801,7 @@ a.big.button
     margin-right: ($sidepad * -1)
 
     color: $txtlight
+    font-weight: 500!important
     &:hover
       color: $accent*0.8
 
@@ -749,13 +816,14 @@ a.big.button
       color: $grey*0.6
 
   a.level-2
+    margin-top: 20px;
     font-size: 1em
     font-weight: normal
 
   a.level-3
     font-weight: normal
     font-size: 1em
-    padding-left: 10px
+    padding-left: 8px
 
   a.active
     &, &:visited, &:hover

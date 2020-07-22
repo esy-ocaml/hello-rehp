@@ -216,6 +216,7 @@ else if(
     $(function() { (new Flatdoc.runner(options)).run(); });
   };
 
+
   /**
    * File fetcher function.
    *
@@ -783,7 +784,7 @@ else if(
          * 1. Get vim syntax highlighting to work.
          * 2. Get github to treat their html/htm file as a markdown file for rendering.
          * 3. Load the script tag only when rendered with ReFresh.
-         * 
+         *
          * [ vim:syntax=Markdown ]: # (<script src="flatdoc.js"></script>)
          *
          * Only downside is that it leaves a dangling ) in the text returned to

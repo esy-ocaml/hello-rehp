@@ -124,6 +124,24 @@ Markdown][fences].
     <strong>Hola, mundo</strong>
     ```
 
+#### Medium-Zoom Images
+
+Images are specified using standard markdown syntax, but they are enhanced with
+a plugin called [Medium Zoom](https://medium-zoom.francoischalifour.com/).
+
+```markdown
+![Beach](images/beach.jpg)
+```
+
+![Beach](images/beach.jpg)
+
+> Click on the image to view a full view. Click, or scroll a small amount to
+> cause the image to animate back into place.
+
+<continueRight/>
+
+
+
 #### Blockquotes
 
 Blockquotes also show up in the right hand column when the window is
@@ -161,6 +179,28 @@ flowing.
 - It will cause that blockquote/fence region to continue flowing into whatever
   comes after it in the left column.
 - Until another blockquote or code fence region begins.
+
+#### Images In Right Column
+
+Images may also be placed into the right column of the document by placing
+them in blockquotes.
+
+```markdown
+> ![Another Beach](images/beach2.jpg)
+```
+
+Like all other elements, you may place a `<continueRight/>` after blockquote
+containing the image to get subsequent content to flow alongside the image on
+its left side:
+
+> ![Another Beach](images/beach2.jpg)
+
+<continueRight/>
+
+
+- Such as this list here
+- **And this bold line here** 
+
 
 
 
