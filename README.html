@@ -1,59 +1,392 @@
-[ vim: set filetype=Markdown: ]: # (<script src="flatdoc.js"></script>)
+[ vim: set filetype=Markdown: ]: # (<script src="site/ReFresh.js"> </script>)
 
-# hello-rehp
+Refresh
+=======
 
-[![Build Status](https://dev.azure.com/esy-ocaml/esy-ocaml/_apis/build/status/esy-ocaml.hello-rehp?branchName=master)](https://dev.azure.com/esy-ocaml/esy-ocaml/_build/latest?definitionId=1?branchName=master)
+Refresh is the easiest documentation tool. It produces beautiful, fast-loading
+documentation pages and bundles all of your rendered doc markup into a single
+shareable file, along with all of its assets.
 
-A project which demonstrates a Reason workflow with [Esy][].
+> Refresh is a fork of the excellent
+> [flatdoc](https://github.com/rstacruz/flatdoc)
+project but with a lighter weight editing workflow, and faster loading of
+published pages.
+> Though it is a relatively minor fork of Flatdoc, it is renamed in this
+> project to Refresh in order to aggressively remove features from its API.
 
-[Esy]: https://github.com/esy-ocaml/esy
+- **No build. No server.** Just edit, refresh.
+- **Looks great** out of the box
+- **Compresses** page into a single, sharable `.html` file.
+
+### Looks
+- Optional Left/right split layout (thanks to flatdoc).
+- Sticky navigation.
+
+### Workflow
+
+Refresh markdown files use the `.html` file extension but are actually markdown
+files. This allows buildless/serverless editing/loading.
+
+1. Clone this project.
+2. `README.html` is the main markdown file. Edit it.
+3. Open/refresh `site/index.dev.html`.
+
+> Note: This starter project is set up with a `site/` directory to make it easy
+> to drop all of Refresh into your project just by copying the `site/`
+> directory into your project.  The file `site/index.dev.html`, loads a
+> markdown file named `README.html` located one directory up at your project
+> root. `README.html` has the `.html` suffix but it is really a markdown file.
+
+The `index.dev.html` file includes a script tag that runs `Refresh` and
+specifies which files should be loaded:
+
+```html
+<script>
+Refresh.run({
+  fetcher: Refresh.docPage([
+    "./README.md.html"
+  ])
+});
+</script>
+```
+
+### Docs
+
+Docs use the `.html` or `.md.html` extension, and are standard markdown syntax,
+but with the additional requirement of a single script tag on the first line.
+
+```markdown
+<script src="site/Refresh.js"></script>
+Everything _after_ the first line is
+plain **markdown**.
+```
+
+<continueRight/>
+
+See how to [Add More Docs](#refresh-customizing-adding-files)
+
+> Note: Using `.md.html` provides better clarity, but for a project's main
+> `README`, the `.html` extension is better as Github will render it as your
+> main project's README in markup if you follow
+> [Integrations](#refresh-integration).
 
 
-## Usage
+### Styles
 
-You need Esy, you can install the beta using [npm][]:
+Styles can be authored in plain `.css` and included in `index.dev.html` as a
+regular css file, but Refresh also supports [Stylus](stylus) files also without
+any build step/server.  Stylus config goes into files with a `.html` file (or
+preferably a `.styl.html` file - for clarity), and use standard Stylus syntax,
+with the exception of requiring a single single script tag on the first line,
+just as with markdown files.
 
-    % npm install -g esy@latest
+```css
+<script src="site/Refresh.js"></script>
+.title-area
+  min-height: 100px
+  box-sizing: border-box
+  antialias()
+  text-align: center
+```
 
-Then you can install the project dependencies using:
+<continueRight/>
 
-    % esy install
+The default Stylus file is
+[`theme-white/theme.styl.html`](theme-white/theme.styl.html). You may edit it
+and reload the page to see the changes.
 
-Then build the project dependencies along with the project itself:
+> Note: Check the console for errors parsing your Stylus syntax.
 
-    % esy build
+Create more `.styl.html` files and add them to the list of files in the
+`stylusFetcher` loaded as explained in [Adding
+Files](#refresh-customizing-adding-files) section.
 
-Now you can run your editor within the environment (which also includes merlin):
+### Markdown Features
 
-    % esy $EDITOR
-    % esy vim
+In addition to standard markdown, Refresh inheirits great features from flatdoc,
+and adds some of its own.
 
-After you make some changes to source code, you can re-run project's build
-using:
+#### Buttons
 
-    % esy build
+Include a `>` at the end of your link text (for instance: `Continue >`), to
+turn them into buttons. This is a feature from flatdoc.
 
-And test compiled executable (runs `scripts.tests` specified in
-`package.json`):
+> [Go To Github >][github]
 
-    % esy test
+#### Code highlighting
 
-Documentation for the libraries in the project can be generated with:
+You can use Markdown code fences to make syntax-highlighted text. Code blocks
+like this will end up in the right hand column when the window is sufficiently
+wide. Surround your text with three backticks just like with [GitHub Flavored
+Markdown][fences].
 
-    % esy doc
-    % esy open '#{self.target_dir}/default/_doc/_html/index.html'
+    ``` html
+    <strong>Hola, mundo</strong>
+    ```
 
-Shell into environment:
+#### Blockquotes
 
-    % esy shell
+Blockquotes also show up in the right hand column when the window is
+sufficiently large. This is useful for providing extra information or non-code
+examples that move out of the way of the main document.
+
+> Blockquotes are blocks that begin with `>`.
+
+#### Smart quotes
+
+Single quotes, double quotes, and double-hyphens are replaced to their
+"typographically-accurate" equivalent. This does not apply to `<code>` and
+`<pre>` blocks.
+
+> "Check out this quote here. Look how how correct the quotes are"
+> --me
 
 
-## Create Prebuilt Release:
+#### `<continueRight/>`
 
-`esy` allows creating prebuilt binary packages for your current platform, with
-no dependencies.
+Refresh adds an additional feature that allows a right column element to continue
+flowing.
 
-    % esy npm-release
-    % cd _release
-    % npm publish
+> This blockquote comes immediately after the text
+> _"Refresh adds an additional feature that allows a right column element to
+> continue flowing"_
+> but notice how this blockquote also continues to "flow" into the list that
+> comes after it? This is important for creating a better balance of left and
+> right content. Doing so requires the author to opt into having particular
+> blockquote/code blocks flow into subsequent left content when it makes sense.
 
+<continueRight/>
+
+- After a blockquote or code fence region, include a `<continueRight/>` tag.
+- It will cause that blockquote/fence region to continue flowing into whatever
+  comes after it in the left column.
+- Until another blockquote or code fence region begins.
+
+
+
+### Optimizing
+You can deploy this repo and serve its files with no build step. But you can
+also optimize your docs page into a single, minified `.html` file which bundles
+all of its resources *including* fonts and images! There are many benefits to
+the way Refresh compresses your docs site into a single, shareable `.html` file.
+
+```
+cd site
+npm install
+npm run bundle
+# Now deploy index.html
+```
+
+- Refresh prerenders at build time instead of page load time (faster loading).
+- A single web request for the entire page.
+- Easily send the docs as an attachment in Discord/Messenger chat thread.
+- Save your online docs using the browser's '"Save As"
+- Refresh makes sure your page looks exactly the same on anyone's computer,
+  including the fonts.
+
+## Customizing
+
+### Add Files
+
+You can add more markdown docs (using the `.md.html`) or [Stylus](stylus) files
+(using the `.styl.html` extension).  Then just add it to the list of files
+loaded in `index.dev.html`'s script tag.
+
+```html
+<script>
+Refresh.run({
+  stylusFetcher: Refresh.docPage([
+    "./path/to/YourStyle.styl.html"
+  ]),
+  fetcher: Refresh.docPage([
+    "./path/to/YourDoc.md.html"
+  ]),
+  highlight: (code, value) =>
+    hljs.highlight(value, code).value;
+});
+</script>
+```
+<continueRight/>
+
+- Stylus files should have the `.styl.html` extension, and be included in the
+  `stylusFetcher:`.
+- Markdown files shoud have the `.md.html` extension and be included in the
+  `fetcher:`
+
+
+### Highlighting
+
+Refresh includes a vendored [hljs](hljs), and it is enabled by default in the main
+script tag in `index.dev.html` that runs `Refresh`. `hljs` is by default configured
+to be the highlighter, and you can customize this.
+
+
+```html
+<script>
+Refresh.run({
+  stylusFetcher: ...,
+  fetcher: ...,
+  highlight: (code, value) =>
+    hljs.highlight(value, code).value;
+});
+</script>
+```
+
+
+### Fonts
+Refresh comes with two vendored fonts.
+
+- [`fonts/CodingFont.css`](./fonts/CodingFont.css): a css inlined font named
+  `CodingFont`
+- [`fonts/WordFont.css`](./fonts/WordFont.css) a css inlined font named
+  `WordFont`
+
+These two font names are referenced in
+[`theme-white/theme.styl.html`](theme-white/theme.styl.html). `CodingFont` is
+actually `Fira`, and `WordFont` is actually `Roboto`, but they have been
+renamed. See their respective licenses in [fonts/](./fonts).
+
+### Customizing Font
+You can either replace `CodingFont` and `WordFont` with two css files that
+contain your desired fonts, but rename those fonts to be
+`CodingFont`/`WordFont` respectively. This would work well if you are replacing
+those fonts with an open licensed font.
+
+If you want to use a proprietary font when publishing your page online, but
+want to keep your documentation open source, Refresh also supports a "layered"
+approach. Two additional custom fonts (`PrivateCodingFont` and
+`PrivateWordFont`) are automatically prioritized if they are present in the
+repo.
+
+- [`fonts/PrivateCodingFont.css`](./fonts/PrivateCodingFont.css), if present,
+  should define a css inlined font named `PrivateCodingFont`.
+- [`fonts/PrivateWordFont.css`](./fonts/PrivateWordFont.css), if present,
+  should define a css inlined font named `PrivateWordFont`.
+
+These allow you to keep the `CodingFont`/`WordFont` in a public Github repo,
+but then locally define these private fonts which are never pushed publicly to
+a repo. This allows you to easily open source every part of your docs site
+except private fonts, which you personally use locally, and will push to
+production.
+
+Once you create the propper css files in those locations that define fonts
+named `PrivateCodingFont` and `PrivateWordFont` respectively, those fonts will
+be used to render code examples and text respectively, otherwise the included
+`CodingFont` and `WordFont`  fonts will be used as a fallback.
+
+Note: These private fonts are not present in this github repo, but you may
+populate them with your custom fonts as follows:
+
+#### Creating Font Files:
+
+**Creating Your Own Private Font Files:**
+To create your own `PrivateCodingFont.css`/`PrivateWordFont.css` use a site
+like [https://transfonter.org/](tranfonter.org) to turn your prefered fonts
+into inlined CSS fonts (Select `woff`, and select the `base64` option). Then
+edit the resulting CSS file to change the name of the font to
+`PrivateCodingFont` or `PrivateWordFont` and place them at
+[`./fonts/PrivateCodingFont.css`](./fonts/PrivateCodingFont.css) and
+[`./fonts/PrivateWordFont.css`](./fonts/PrivateWordFont.css) respectively.
+
+## Integration
+
+### Github README
+This example project is already setup so that the main `README` file will
+render as the Github project's README without any extra configuration. If you
+copied this project as your starter, then your project is probably already
+setup to render this main `README.html` file as the Github project README.
+
+- Make sure you don't have some other `README.md` file in your repo that would
+  take precedence over the `README.html`.
+- Make sure your main doc page is named `README.html` and is located in your project root.
+- Make sure `index.dev.html` loads `README.html` (it does by default).
+- Change the first line of the `README.html` to be more than just a simple script tag.
+
+Instead of `<script src="site/Refresh.js"></script>`, make sure it is:
+
+```markdown
+[ vim: set filetype=Markdown: ]: # (<script src="site/Refresh.js"></script>)
+Your markdown here
+as always
+```
+
+<continueRight/>
+
+That line in a file named `README.html` accomplishes the following:
+
+1. When you edit it in Vim it will detect the filetype as markdown.
+2. When you view the file in Github it will render it as markdown instead of
+   plain text (Github detects vim settings)
+3. The script will load when you are loading the html file as a doc page in
+   Refresh.
+4. The entire first line is entirely hidden when viewing the file as markdown
+   in Github so it doesn't clutter up the Github viewing experience.
+
+> How Does This Work? You don't need to care about this, but if you're curious,
+> that syntax is actually a markdown link definition, with the link name
+> between the `[ ]`. The name can be anything, and we've named it to something
+> that tells both Vim and Github to treat the file as markdown regardless of
+> the file extension. The contents after `#` are the link _location_ which can
+> also be nearly anything, and we've set it to the script tag that needs to be
+> loaded in any markdown doc file.
+
+#### Alternative line:
+
+Alternatively you could use the following line, with the only difference being
+that the `.html` file will automatically be detected as markdown in Emacs
+instead of Vim:
+
+```markdown
+[-*-mode:markdown-*-]: # (<script src="site/Refresh.js"> </script>)
+```
+
+#### `.gitattributes` Approach:
+TODO:
+
+## More
+
+### How It Works
+
+`README.md.html` is both a valid html page and a valid markdown page. Because
+browsers allow loading of html pages in iframes across origins, no web server
+is needed to develop and reload docs entirely in the browser without a build
+step/web server.
+
+`README.md.html` looks like:
+
+```markdown
+<script src="site/Refresh.js"></script>
+Everything _after_ the first line is
+plain **markdown**.
+1. Nothing needs to be escaped.
+2. Not even if your markdown contains
+  a `<script>` tag.
+```
+<continueRight/>
+
+Everything after the first line is plain markdown. There is nothing special you
+need to do to your markdown even though it is in an `.html` file. You can
+include literally any markdown after that first script tag line, and you don't
+have to escape any of it. The browser won't even think you're starting a script
+region if you include a `<script>` tag somewhere after the first line. How?
+It's a wonderful hack. The inclusion of the first `Refresh.js` script forces
+the rest of the document to be interpreted as plain text that needn't be
+escaped.
+
+#### Issues:
+You must only load markdown html files that you authored and trust. Currently,
+the way that the `marked` library is being used does not sanitize the output
+before injecting it into the DOM.
+
+> TODO: Improve this.
+
+### Acknowledgements
+See [ORIGINS.md](./ORIGINS.md) for links and licenses of various
+components that are embedded in this project.
+
+[github]: https://github.com
+[fences]:https://help.github.com/articles/github-flavored-markdown#syntax-highlighting
+[hljs]: https://highlightjs.org/
+[stylus]: https://stylus-lang.com
+[rsc]: http://ricostacruz.com
+[c]:   http://github.com/rstacruz/flatdoc/contributors
