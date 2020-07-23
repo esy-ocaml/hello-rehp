@@ -1,20 +1,20 @@
-[ vim: set filetype=Markdown: ]: # (<script src="site/ReFresh.js"> </script>)
+[ vim: set filetype=Markdown: ]: # (<script src="site/Reload.js"> </script>)
 
-Refresh
+Reload
 =======
 
-Refresh is the easiest documentation tool. It produces beautiful, fast-loading
+Reload is the easiest documentation tool. It produces beautiful, fast-loading
 documentation pages and bundles all of your rendered doc markup into a single
 shareable file, along with all of its assets.
 
-> Refresh is a fork of the excellent
+> Reload is a fork of the excellent
 > [flatdoc](https://github.com/rstacruz/flatdoc)
 project but with a lighter weight editing workflow, and faster loading of
 published pages.
 > Though it is a relatively minor fork of Flatdoc, it is renamed in this
-> project to Refresh in order to aggressively remove features from its API.
+> project to Reload in order to aggressively remove features from its API.
 
-- **No build. No server.** Just edit, refresh.
+- **No build. No server.** Just edit, Reload.
 - **Looks great** out of the box
 - **Compresses** page into a single, sharable `.html` file.
 
@@ -24,29 +24,25 @@ published pages.
 
 ### Workflow
 
-Refresh markdown files use the `.html` file extension but are actually markdown
+Reload markdown files use the `.html` file extension but are actually markdown
 files. This allows buildless/serverless editing/loading.
 
 1. Clone this project.
 2. `README.html` is the main markdown file. Edit it.
-3. Open/refresh `site/index.dev.html`.
+3. Reload `site/index.dev.html`.
 
 > Note: This starter project is set up with a `site/` directory to make it easy
-> to drop all of Refresh into your project just by copying the `site/`
+> to drop all of Reload into your project just by copying the `site/`
 > directory into your project.  The file `site/index.dev.html`, loads a
 > markdown file named `README.html` located one directory up at your project
 > root. `README.html` has the `.html` suffix but it is really a markdown file.
 
-The `index.dev.html` file includes a script tag that runs `Refresh` and
+The `index.dev.html` file includes a script tag that runs `Reload` and
 specifies which files should be loaded:
 
 ```html
 <script>
-Refresh.run({
-  fetcher: Refresh.docPage([
-    "./README.md.html"
-  ])
-});
+Reload.reload({ doc: "./README.md.html" });
 </script>
 ```
 
@@ -56,32 +52,32 @@ Docs use the `.html` or `.md.html` extension, and are standard markdown syntax,
 but with the additional requirement of a single script tag on the first line.
 
 ```markdown
-<script src="site/Refresh.js"></script>
+<script src="site/Reload.js"></script>
 Everything _after_ the first line is
 plain **markdown**.
 ```
 
 <continueRight/>
 
-See how to [Add More Docs](#refresh-customizing-adding-files)
+See how to [Add More Docs](#reload-customizing-adding-files)
 
 > Note: Using `.md.html` provides better clarity, but for a project's main
 > `README`, the `.html` extension is better as Github will render it as your
 > main project's README in markup if you follow
-> [Integrations](#refresh-integration).
+> [Integrations](#reload-integration).
 
 
 ### Styles
 
 Styles can be authored in plain `.css` and included in `index.dev.html` as a
-regular css file, but Refresh also supports [Stylus](stylus) files also without
+regular css file, but Reload also supports [Stylus](stylus) files also without
 any build step/server.  Stylus config goes into files with a `.html` file (or
 preferably a `.styl.html` file - for clarity), and use standard Stylus syntax,
 with the exception of requiring a single single script tag on the first line,
 just as with markdown files.
 
 ```css
-<script src="site/Refresh.js"></script>
+<script src="site/Reload.js"></script>
 .title-area
   min-height: 100px
   box-sizing: border-box
@@ -99,11 +95,11 @@ and reload the page to see the changes.
 
 Create more `.styl.html` files and add them to the list of files in the
 `stylusFetcher` loaded as explained in [Adding
-Files](#refresh-customizing-adding-files) section.
+Files](#reload-customizing-adding-files) section.
 
 ### Markdown Features
 
-In addition to standard markdown, Refresh inheirits great features from flatdoc,
+In addition to standard markdown, Reload inheirits great features from flatdoc,
 and adds some of its own.
 
 #### Buttons
@@ -162,11 +158,11 @@ Single quotes, double quotes, and double-hyphens are replaced to their
 
 #### `<continueRight/>`
 
-Refresh adds an additional feature that allows a right column element to continue
+Reload adds an additional feature that allows a right column element to continue
 flowing.
 
 > This blockquote comes immediately after the text
-> _"Refresh adds an additional feature that allows a right column element to
+> _"Reload adds an additional feature that allows a right column element to
 > continue flowing"_
 > but notice how this blockquote also continues to "flow" into the list that
 > comes after it? This is important for creating a better balance of left and
@@ -208,7 +204,7 @@ its left side:
 You can deploy this repo and serve its files with no build step. But you can
 also optimize your docs page into a single, minified `.html` file which bundles
 all of its resources *including* fonts and images! There are many benefits to
-the way Refresh compresses your docs site into a single, shareable `.html` file.
+the way Reload compresses your docs site into a single, shareable `.html` file.
 
 ```
 cd site
@@ -217,11 +213,11 @@ npm run bundle
 # Now deploy index.html
 ```
 
-- Refresh prerenders at build time instead of page load time (faster loading).
+- Reload prerenders at build time instead of page load time (faster loading).
 - A single web request for the entire page.
 - Easily send the docs as an attachment in Discord/Messenger chat thread.
 - Save your online docs using the browser's '"Save As"
-- Refresh makes sure your page looks exactly the same on anyone's computer,
+- Reload makes sure your page looks exactly the same on anyone's computer,
   including the fonts.
 
 ## Customizing
@@ -230,19 +226,14 @@ npm run bundle
 
 You can add more markdown docs (using the `.md.html`) or [Stylus](stylus) files
 (using the `.styl.html` extension).  Then just add it to the list of files
-loaded in `index.dev.html`'s script tag.
+loaded in `index.dev.html`'s script tag. The `doc` and `stylus` options accept
+an array of paths.
 
 ```html
 <script>
-Refresh.run({
-  stylusFetcher: Refresh.docPage([
-    "./path/to/YourStyle.styl.html"
-  ]),
-  fetcher: Refresh.docPage([
-    "./path/to/YourDoc.md.html"
-  ]),
-  highlight: (code, value) =>
-    hljs.highlight(value, code).value;
+Reload.reload({
+  stylus: ["./path/to/YourStyle.styl.html"],
+  doc: ["./path/to/YourDoc.md.html"]
 });
 </script>
 ```
@@ -256,25 +247,25 @@ Refresh.run({
 
 ### Highlighting
 
-Refresh includes a vendored [hljs](hljs), and it is enabled by default in the main
-script tag in `index.dev.html` that runs `Refresh`. `hljs` is by default configured
+Reload includes a vendored [hljs](hljs), and it is enabled by default in the main
+script tag in `index.dev.html` that runs `Reload`. `hljs` is by default configured
 to be the highlighter, and you can customize this.
 
 
 ```html
 <script>
-Refresh.run({
-  stylusFetcher: ...,
-  fetcher: ...,
-  highlight: (code, value) =>
-    hljs.highlight(value, code).value;
+Reload.reload({
+  stylus: ...,
+  doc: ...,
+  highlight: (txt, lan) =>
+    hljs.highlight(lan, txt).lan;
 });
 </script>
 ```
 
 
 ### Fonts
-Refresh comes with two vendored fonts.
+Reload comes with two vendored fonts.
 
 - [`fonts/CodingFont.css`](./fonts/CodingFont.css): a css inlined font named
   `CodingFont`
@@ -293,7 +284,7 @@ contain your desired fonts, but rename those fonts to be
 those fonts with an open licensed font.
 
 If you want to use a proprietary font when publishing your page online, but
-want to keep your documentation open source, Refresh also supports a "layered"
+want to keep your documentation open source, Reload also supports a "layered"
 approach. Two additional custom fonts (`PrivateCodingFont` and
 `PrivateWordFont`) are automatically prioritized if they are present in the
 repo.
@@ -342,10 +333,10 @@ setup to render this main `README.html` file as the Github project README.
 - Make sure `index.dev.html` loads `README.html` (it does by default).
 - Change the first line of the `README.html` to be more than just a simple script tag.
 
-Instead of `<script src="site/Refresh.js"></script>`, make sure it is:
+Instead of `<script src="site/Reload.js"></script>`, make sure it is:
 
 ```markdown
-[ vim: set filetype=Markdown: ]: # (<script src="site/Refresh.js"></script>)
+[ vim: set filetype=Markdown: ]: # (<script src="site/Reload.js"></script>)
 Your markdown here
 as always
 ```
@@ -358,7 +349,7 @@ That line in a file named `README.html` accomplishes the following:
 2. When you view the file in Github it will render it as markdown instead of
    plain text (Github detects vim settings)
 3. The script will load when you are loading the html file as a doc page in
-   Refresh.
+   Reload.
 4. The entire first line is entirely hidden when viewing the file as markdown
    in Github so it doesn't clutter up the Github viewing experience.
 
@@ -377,7 +368,7 @@ that the `.html` file will automatically be detected as markdown in Emacs
 instead of Vim:
 
 ```markdown
-[-*-mode:markdown-*-]: # (<script src="site/Refresh.js"> </script>)
+[-*-mode:markdown-*-]: # (<script src="site/Reload.js"> </script>)
 ```
 
 #### `.gitattributes` Approach:
@@ -395,7 +386,7 @@ step/web server.
 `README.md.html` looks like:
 
 ```markdown
-<script src="site/Refresh.js"></script>
+<script src="site/Reload.js"></script>
 Everything _after_ the first line is
 plain **markdown**.
 1. Nothing needs to be escaped.
@@ -409,7 +400,7 @@ need to do to your markdown even though it is in an `.html` file. You can
 include literally any markdown after that first script tag line, and you don't
 have to escape any of it. The browser won't even think you're starting a script
 region if you include a `<script>` tag somewhere after the first line. How?
-It's a wonderful hack. The inclusion of the first `Refresh.js` script forces
+It's a wonderful hack. The inclusion of the first `Reload.js` script forces
 the rest of the document to be interpreted as plain text that needn't be
 escaped.
 

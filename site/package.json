@@ -1,5 +1,5 @@
 {
-  "name": "Refresh",
+  "name": "Reload",
   "description": "Fork of the wonderful Flatdoc",
   "keywords": [
     "documentation",
@@ -13,9 +13,9 @@
   },
   "scripts": {
     "test": "mocha",
-    "bundle": "node ./Refresh.js bundle"
+    "bundle": "node ./Reload.js bundle"
   },
-  "main": "Refresh.js",
+  "main": "Reload.js",
   "devDependencies": {
     "mocha": "1.10.0",
     "chai": "1.6.0",

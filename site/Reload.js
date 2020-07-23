@@ -6,7 +6,7 @@
 
 
 /**
- * Refresh is just a paired down version of Flatdoc with some additional
+ * Reload is just a paired down version of Flatdoc with some additional
  * features, and many features removed.
  *
  * This version of flatdoc can run in three modes:
@@ -14,19 +14,19 @@
  * Main entrypoint script include (when included from an index.html or
  * foo.html).
  *
- *     <script start src="pathto/Refresh.js"></script>
+ *     <script start src="pathto/Reload.js"></script>
  *
  * Included in a name.md.html markdown document or name.styl.html Stylus
  * document at the start of file
  *
- *     <script src="pathto/Refresh.js"></script>
+ *     <script src="pathto/Reload.js"></script>
  *     # Rest of markdown here
  *     - regular markdown
  *     - regular markdown
  *
  * or:
  *
- *     <script src="pathto/Refresh.js"></script>
+ *     <script src="pathto/Reload.js"></script>
  *     Rest of .styl document here:
  *
  * As a node script which will bundle your page into a single file assuming you've run npm install.
@@ -206,7 +206,7 @@ else if(
    */
 
   var Flatdoc = exports.Flatdoc = {};
-  exports.Refresh = exports.Flatdoc;
+  exports.Reload = exports.Flatdoc;
 
   /**
    * Creates a runner.
@@ -214,6 +214,23 @@ else if(
    */
   Flatdoc.run = function(options) {
     $(function() { (new Flatdoc.runner(options)).run(); });
+  };
+  
+  /**
+   * Simplified easy to use API that calls the underlying API.
+   */
+  Flatdoc.reload = function(options) {
+    var actualOptions = {};
+    if(options.stylus) {
+      actualOptions.stylusFetcher = Flatdoc.docPage(options.stylus);
+    }
+    if(options.doc) {
+      actualOptions.fetcher = Reload.docPage(options.doc);
+    }
+    if(options.highlight) {
+      actualOptions.highlight = options.highlight;
+    }
+    Flatdoc.run(actualOptions);
   };
 
 
