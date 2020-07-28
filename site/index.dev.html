@@ -31,7 +31,11 @@
       stylus: './theme-white/theme.styl.html',
       doc: '../README.html',
       highlight: function (code, value) {
-        return hljs.highlight(value === 'reason' ? 'reasonml' : value, code).value;
+        return hljs.highlight(
+          value === 'reason' ? 'reasonml' :
+          value === 'json' ? 'javascript' : value,
+          code
+        ).value;
       }
     });
   </script>
