@@ -4,6 +4,7 @@ support-for-ie = true
 // Fonts
 $body-font = PrivateWordFont, WordFont, Helvetica Neue, Open Sans, sans-serif
 $mono-font = PrivateCodingFont, CodingFont, Menlo, monospace
+$mono-font-size = 0.90em
 
 // Margins
 $pad = 40px      // Space between things
@@ -14,13 +15,19 @@ $vmargin = 16px  // Margin between blocks
 // Colors
 $offwhite = #fafafa
 $codebg = #f7fafc
+$hitsbg = white
 $codeborder = #eceff3
 $grey = #909090
+$lightgrey = #b0b0b0
 $txt = #444444
 $txtlight = #888888
 $accent = #556cd6 * 0.85
 $line = #e3e8ee 
+$linedarker = #dde2e9 
 $headerbg = #fafafa 
+// This could probably be derived from the others.
+// It's the main right column
+$rightcolumnwidth=380px
 
 // Misc
 $shadow-str = 0.1
@@ -28,6 +35,9 @@ $shadow-str = 0.1
 // Dimensions
 $sidebar-width = 230px
 $content-width = 550px
+// Because code blocks are rendered in search, need
+// it to be about as wide as the standard right column
+$rightdockedhitscolumnwidth = $rightcolumnwidth
 $pre-width = 380px
 
 .medium-zoom-image
@@ -175,8 +185,10 @@ body, td, textarea, input
 a
   color: $accent
   text-decoration: none
-  &:hover
+  &:hover, &:focus
     color: $accent * 0.8
+  &:focus
+    text-decoration: underline
 
 /* ----------------------------------------------------------------------------
  * Content styling
@@ -200,6 +212,7 @@ a
 
   pre
     font-family: $mono-font
+    font-size: $mono-font-size
 
   ul > li
     list-style-type: disc
@@ -255,7 +268,7 @@ a
   code
     font-family: $mono-font
     padding: 1px 3px
-    font-size: 0.90em
+    font-size: $mono-font-size
 
   pre > code
     border: none;
@@ -371,6 +384,7 @@ a
 
   blockquote
     color: $grey
+    padding-left: 40px
 
   h1, h2, h3
     antialias()
@@ -381,7 +395,6 @@ a
       padding-top: 10px
 
   h1, h2
-    text-transform: uppercase
     letter-spacing: 1px
     font-size: 1.5em
 
@@ -499,7 +512,8 @@ pre > code
     color: white
     text-shadow: none
 
-  &:hover
+  &:hover, &:focus
+    text-decoration: none
     border-color: #111
     background: #111
     color: white
@@ -511,7 +525,8 @@ pre > code
       border-color: $grey
       text-shadow: none
 
-    &:hover
+    &:hover, &:focus
+      text-decoration: none
       border-color: $grey
       background: $grey
       color: white
@@ -520,6 +535,126 @@ pre > code
   .button + em
     color: $grey
 
+// Search results
+// --------------
+
+#hits
+  overflow: auto
+  scrollbar($offwhite)
+
+  /* Bottom: 100% makes it grow upwards */
+  /* Total header height should be 52 = vmargin*2 + line-height(20) */
+  background-color:$hitsbg
+  top: 52px
+  .ais-Hits
+    color: $txt
+    box-shadow: 0 2px 5px 0px #444444
+  .ais-Hits-list
+    flex-wrap: nowrap
+    flex-direction:column
+    margin:0
+    border-top: none
+    border-left: 1px solid $line
+    border-right: 1px solid $line
+    border-bottom: 1px solid $linedarker
+  .ais-Hits-item
+    border-bottom: none
+    border-top: 1px solid $line
+    border-left: none
+    border-right: none
+    /* By default is: */
+    /* width: calc(25% - 1rem) */
+    width: 100%
+    margin:0
+    box-shadow: none
+    li
+      list-style-type: none
+      position: relative
+      margin-left: 4px
+      &:before
+        content: ''
+        display: block
+        position: absolute
+        left: -17px
+        top: 7px
+        width: 5px
+        height: 5px
+        border-radius: 4px
+        box-sizing: border-box
+        background: transparent
+        border: solid 1px $lightgrey
+
+    table > code, li > code, tr > code, td > code, th > code, p > code
+      font-family: $mono-font
+      font-size: $mono-font-size
+      border: 1px solid $codeborder;
+      background: $codebg
+      border-radius: 2px;
+      padding: 1px 3px
+      background: $codebg
+      border-radius: 2px;
+      border: 1px solid $codeborder
+    pre
+      code
+        font-size: 0.9em
+      font-family: $mono-font
+      background: $offwhite
+      display: block
+      padding: 10px
+      border-radius: 2px
+      overflow-x: scroll
+      &::-webkit-scrollbar
+        display: none
+      -ms-overflow-style: none  /* IE and Edge */
+      scrollbar-width: none  /* Firefox */
+
+    search-highlight
+      color: black;
+      background-color: #ffd40060;
+      border-radius: 2px;
+      padding-top: 1px;
+      padding-bottom: 1px;
+      padding-left: 3px;
+      padding-right: 3px;
+      /* Now remove the padding - but also remove one for the border */
+      /* This is so that when typing the text around it doesn't move */
+      margin-left: -4px;
+      margin-right: -4px;
+      border: 1px solid #d3b00080;
+
+  .ais-Hits.ais-Hits--empty
+    display:none
+    
+// Literate mode
+@media (max-width: 1180px + $rightdockedhitscolumnwidth) /* Big desktop */
+  #hits
+    /* btw: Bottom: 100% makes it grow upwards */
+    $w = ($sidebar-width + $content-width)
+    left: $w
+    right: 0
+    
+// SUPPPPPPPPPER wide (create right nav for search results)
+@media (min-width: 1180px + $rightdockedhitscolumnwidth) /* Big desktop */
+  #hits
+    width: $rightdockedhitscolumnwidth
+    right: 0
+
+/* Non-literate mode */
+@media (max-width: 1180px) /* Small desktop */
+  #hits
+    /* Bottom: 100% makes it grow upwards */
+    $w = ($sidebar-width + $content-width)
+    left: 50%
+    right: 0
+    
+// Super collapsed mode increases size of header to 92px;
+@media (max-width: 480px) /* Small desktop */
+  #hits
+    /* Bottom: 100% makes it grow upwards */
+    $w = ($sidebar-width + $content-width)
+    left: 0
+    top: 92px
+    right: 0
 
 // ----------------------------------------------------------------------------
 // Literate mode content
@@ -628,7 +763,7 @@ pre > code
   z-index:101
   /* text-shadow: 0 1px 0 rgba(white, 0.5) */
   border-bottom: solid 1px $line
-  padding: 15px 15px 15px $sidepad
+  padding: $vmargin $sidepad $vmargin $sidepad
   position: -webkit-sticky
   position: sticky
   top: 0px;
@@ -638,59 +773,70 @@ pre > code
 
   .left
     float: left
+    @media (min-width: 480px) /* Tablet & Desktop */
+      h1
+        float: left
 
-  .right
-    text-align: right
-    position: absolute
-    right: 15px
-    top: 15px
+      ul, li
+        display: block
+        float: left
 
-    iframe
-      display: inline-block
-      vertical-align: middle
+      ul
+        margin-left: -15px
 
-  h1
-    antialias()
-    font-weight: bold
-    font-family: WordFont, sans-serif
-    font-size: 1em
+      h1 + ul
+        border-left: solid 1px $line
+        margin-left: 15px
 
-    &, a, a:visited
-      color: $grey
-    a:hover
-      color: $txt
+      li
+        border-left: solid 1px rgba(white, 0.5)
+        border-right: solid 1px $line
+        &:last-child
+          border-right: 0
 
-  li a
-    font-size: 1em
-    color: $grey
-    display: block
-
-    &:hover
-      color: $grey*0.4
-
-  @media (min-width: 480px) /* Tablet & Desktop */
+      li a
+        padding: 0 15px
+    
     h1
-      float: left
+      antialias()
+      font-weight: bold
+      font-family: WordFont, sans-serif
+      font-size: 1em
 
-    ul, li
-      display: block
-      float: left
-
-    ul
-      margin-left: -15px
-
-    h1 + ul
-      border-left: solid 1px $line
-      margin-left: 15px
-
-    li
-      border-left: solid 1px rgba(white, 0.5)
-      border-right: solid 1px $line
-      &:last-child
-        border-right: 0
+      &, a, a:visited
+        color: $grey
+      a:hover, a:focus
+        text-decoration: none
+        color: $txt
 
     li a
-      padding: 0 15px
+      font-size: 1em
+      color: $grey
+      display: block
+
+      &:hover, &:focus
+        text-decoration: none
+        color: $grey*0.4
+
+
+  /* Total header height should be 52 = vmargin*2 + line-height(20) */
+  .right
+    display: flex;
+    align-items: center;
+    width: 300px;
+    position: absolute;
+    top: 0px;
+    bottom: 0px;
+    right: 30px;
+    line-height: 100%;
+    flex-direction: row-reverse; 
+  #searchbox
+    display:flex
+
+  #hits
+    position:absolute
+
+
 
 @media (max-width: 480px) /* Mobile */
   // Hide extra stuff on mobile
@@ -732,7 +878,8 @@ a.big.button
     color: $accent
     text-decoration: none
 
-  &:hover
+  &:hover, &:focus
+    text-decoration: none
     background: $accent
     &, &:visited
       color: white
@@ -803,7 +950,8 @@ a.big.button
 
     color: $txtlight
     font-weight: 500!important
-    &:hover
+    &:hover, &:focus
+      text-decoration: none
       color: $accent*0.8
 
   a.level-1
@@ -813,7 +961,7 @@ a.big.button
     font-weight: bold
     &, &:visited
       color: $grey
-    &:hover
+    &:hover, &:focus
       color: $grey*0.6
 
   a.level-2
@@ -826,7 +974,7 @@ a.big.button
     padding-left: 8px
 
   a.active
-    &, &:visited, &:hover
+    &, &:visited, &:hover, &:focus
       color: $accent
     
     // Indicator

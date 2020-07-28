@@ -62,6 +62,7 @@
         }
       });
       $('.menu a').anchorjump();
+      $('#hits').anchorjump();
       // Rejump after images have loaded
       $.anchorjump(window.location.hash, {speed: 0});
       /**
@@ -309,6 +310,9 @@
     'parent': document.body
   };
 
+  /**
+   * This is currently broken for animation jumps except the left nav.
+   */
   $.fn.anchorjump = function(options) {
     options = $.extend({}, defaults, options);
 
@@ -320,6 +324,10 @@
 
     function onClick(e) {
       var $a = $(e.target).closest('a');
+      var href = $a.attr('href');
+      if(href.indexOf('#') !== 0) {
+        return;
+      }
       if (e.ctrlKey || e.metaKey || e.altKey || $a.attr('target')) {
         return;
       }

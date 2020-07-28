@@ -5,6 +5,591 @@
  */
 
 
+var emptyHTML = "";
+
+function escapePlatformStringLoop(html, lastIndex, index, s, len) {
+  var html__0 = html;
+  var lastIndex__0 = lastIndex;
+  var index__0 = index;
+  for (; ; ) {
+    if (index__0 === len) {
+      var match = 0 === lastIndex__0 ? 1 : 0;
+      if (0 === match) {
+        var match__0 = lastIndex__0 !== index__0 ? 1 : 0;
+        return 0 === match__0 ?
+          html__0 :
+          html__0+s.substring(lastIndex__0, len);
+      }
+      return s;
+    }
+    var code = s.charCodeAt(index__0);
+    if (40 <= code) {
+      var switcher = code + -60 | 0;
+      if (! (2 < switcher >>> 0)) {
+        switch (switcher) {
+          case 0:
+            var html__1 = html__0+s.substring(lastIndex__0, index__0);
+            var lastIndex__1 = index__0 + 1 | 0;
+            var html__2 = html__1+"&lt;";
+            var index__2 = index__0 + 1 | 0;
+            var html__0 = html__2;
+            var lastIndex__0 = lastIndex__1;
+            var index__0 = index__2;
+            continue;
+          case 1:break;
+          default:
+            var html__3 = html__0+s.substring(lastIndex__0, index__0);
+            var lastIndex__2 = index__0 + 1 | 0;
+            var html__4 = html__3+"&gt;";
+            var index__3 = index__0 + 1 | 0;
+            var html__0 = html__4;
+            var lastIndex__0 = lastIndex__2;
+            var index__0 = index__3;
+            continue
+          }
+      }
+    }
+    else if (34 <= code) {
+      var switcher__0 = code + -34 | 0;
+      switch (switcher__0) {
+        case 0:
+          var su = s.substring(lastIndex__0, index__0);
+          var html__5 = html__0+su;
+          var lastIndex__3 = index__0 + 1 | 0;
+          var html__6 = html__5+"&quot;";
+          var index__4 = index__0 + 1 | 0;
+          var html__0 = html__6;
+          var lastIndex__0 = lastIndex__3;
+          var index__0 = index__4;
+          continue;
+        case 4:
+          var su__0 = s.substring(lastIndex__0, index__0);
+          var html__7 = html__0+su__0;
+          var lastIndex__4 = index__0 + 1 | 0;
+          var html__8 = html__7+"&amp;";
+          var index__5 = index__0 + 1 | 0;
+          var html__0 = html__8;
+          var lastIndex__0 = lastIndex__4;
+          var index__0 = index__5;
+          continue;
+        case 5:
+          var su__1 = s.substring(lastIndex__0, index__0);
+          var html__9 = html__0+su__1;
+          var lastIndex__5 = index__0 + 1 | 0;
+          var html__10 = html__9+"&#x27;";
+          var index__6 = index__0 + 1 | 0;
+          var html__0 = html__10;
+          var lastIndex__0 = lastIndex__5;
+          var index__0 = index__6;
+          continue
+        }
+    }
+    var index__1 = index__0 + 1 | 0;
+    var index__0 = index__1;
+    continue;
+  }
+}
+
+function escapeHtml(s) {
+  return (
+    escapePlatformStringLoop(
+      emptyHTML,
+      0,
+      0,
+      s,
+      s.length
+    )
+  );
+}
+
+
+var isSearchable = function(node) {
+  return (
+    node.tagName === 'H1' || node.tagName === 'h1' ||
+    node.tagName === 'H2' || node.tagName === 'h2' ||
+    node.tagName === 'H3' || node.tagName === 'h3' ||
+    node.tagName === 'P' || node.tagName === 'p' ||
+    node.tagName === 'LI' || node.tagName === 'li' ||
+    node.tagName === 'CODE' || node.tagName === 'code' ||
+    node.tagName === 'PRE' || node.tagName === 'pre'
+  );
+};
+var updateContext = function(context, node) {
+  if(node.tagName === 'h1' || node.tagName === 'H1') {
+    return {...context, h1: node};
+  }
+  if(node.tagName === 'h2' || node.tagName === 'H2') {
+    return {...context, h2: node};
+  }
+  if(node.tagName === 'h3' || node.tagName === 'H3') {
+    return {...context, h3: node};
+  }
+  return context;
+};
+var updateSearchables = function(searchables, context, node) {
+  if(isSearchable(node)) {
+    return [{
+      node: node,
+      context: context
+    }, searchables];
+  } else {
+    return searchables;
+  }
+};
+
+/**
+ * Turn a search string into a regex portion.
+ * https://stackoverflow.com/a/1144788
+ */
+function escapeRegExpSearchString(string) {
+  return string.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&');
+}
+
+function replaceAllStringsCaseInsensitive(str, find, replace) {
+  return str.replace(new RegExp(escapeRegExp(find), 'gi'), replace);
+}
+
+function escapeRegExpSplitString(string) {
+  return string.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&');
+}
+
+function splitStringCaseInsensitiveImpl(regex, str, find) {
+  return str.split(regex);
+}
+function splitStringCaseInsensitive(str, find) {
+  return str.split(new RegExp('(' + escapeRegExpSplitString(find) + ')', 'gi'));
+}
+
+/**
+ * Only trust for markdown that came from trusted source (your own page).
+ * I do not know exactly what portions are unsafe - perhaps none.
+ */
+var trustedTraverseAndHighlightImpl = function traverseAndHighlightImpl(regex, text, node) {
+  var childNodes = node.childNodes;
+  var childNode = childNodes.length > 0 ? childNodes[0] : null;
+  var i = 0;
+  var newInnerHtml = '';
+  while(childNode && i < 2000) {
+    if(childNode.nodeType === Node.TEXT_NODE) {
+      var splitOnMatch = splitStringCaseInsensitiveImpl(regex, childNode.textContent, text);
+      splitOnMatch.forEach(function(seg) {
+        if(seg !== '') {
+          if(seg.toLowerCase() === text.toLowerCase()) {
+            newInnerHtml +=
+              ('<search-highlight>' + escapeHtml(seg) + '</search-highlight>');
+          } else {
+            newInnerHtml += escapeHtml(seg);
+          }
+        }
+      });
+    } else {
+      newInnerHtml += trustedTraverseAndHighlightImpl(regex, text, childNode);
+    }
+    i++;
+    childNode = childNodes[i];
+  }
+  var openTag = '';
+  var closeTag = '';
+  var className = node.getAttributeNode("class");
+  classAttr = className ? ' class="' + escapeHtml(className.value) + '"' : '';
+  switch(node.tagName.toLowerCase()) {
+    case 'a':
+      var href = node.getAttributeNode("href");
+      openTag = href ? '<a href="' + escapeHtml(href.value) + '"' + classAttr + '>' : '<a>';
+      closeTag = '</a>'
+      break;
+    case 'code':
+      var className = node.getAttributeNode("class");
+      openTag = className ? '<code class="' + escapeHtml(className.value) + '"' + classAttr + '>' : '<code>';
+      closeTag = '</code>'
+      break;
+    default:
+      openTag = '<' + node.tagName + classAttr + '>';
+      closeTag = '</' + node.tagName + '>';
+  }
+  if(node.tagName.toLowerCase() === 'a') {
+  }
+  return openTag + newInnerHtml + closeTag;
+}
+
+var trustedTraverseAndHighlight = function(text, node) {
+  var regex = new RegExp('(' + escapeRegExpSplitString(text) + ')', 'gi');
+  return trustedTraverseAndHighlightImpl(regex, text, node);
+};
+
+var traverseDOMInsideImpl = function traverseDOMInsideImpl(context, searchables, node, func) {
+  func(node);
+  node = node.firstChild;
+  while(node) {
+    context = updateContext(context, node);
+    if(isSearchable(node)) {
+      searchables = updateSearchables(searchables, context, node);
+    } else {
+      searchables = traverseDOMInsideImpl(context, searchables, node, func);
+    }
+    node = node.nextSibling;
+  }
+  return searchables;
+}
+
+var filterSearchablesLowerCaseImpl = function(searchText, searchablesArray) {
+  var results = [];
+  for(var i = 0; i < searchablesArray.length; i++) {
+    var node = searchablesArray[i].node;
+    var context = searchablesArray[i].context;
+    var lowerCasedInnerText = node.innerText.toLowerCase();
+    var indexMatch = lowerCasedInnerText.indexOf(searchText);
+    if(indexMatch !== -1) {
+      // TODO: Show multiple matches per searchable.
+      results.push({
+        searchable: searchablesArray[i],
+        indexMatch: indexMatch,
+        highlightedInnerText: trustedTraverseAndHighlight(searchText, node)
+      })
+    }
+  }
+  return results;
+};
+
+var filterSearchables = function(txt, searchablesArray) {
+  return filterSearchablesLowerCaseImpl(txt, searchablesArray);
+};
+
+var matchedSearchableToHit = function(matchedSearchable) {
+  return {
+    name:
+      matchedSearchable.searchable.context.h3 ? matchedSearchable.searchable.context.h3.innerText :
+      matchedSearchable.searchable.context.h2 ? matchedSearchable.searchable.context.h2.innerText :
+      matchedSearchable.searchable.context.h1 ? matchedSearchable.searchable.context.h1.innerText : "",
+    content: matchedSearchable.searchable.node.innerText,
+    _highlightResult: {
+      content: {
+        value: matchedSearchable.highlightedInnerText,
+        matchLevel: "full",
+        fullyHighlighted: true,
+        matchedWords: ["z"],
+      },
+      // Add others here
+    },
+  }
+};
+
+
+/* Matches found in the header itself will be considered in that context */
+var startContext = {
+  h1: null,
+  h2: null,
+  h3: null,
+};
+var startSearchables = 0; // nill
+
+var flattenList = function(list) {
+  var ret = [];
+  while(list !== 0) {
+    ret.push(list[0]);
+    list = list[1];
+  }
+  return ret;
+};
+var traverseDOMInside = function(node, func) {
+  return flattenList(traverseDOMInsideImpl(startContext, startSearchables, node, func));
+};
+
+var searchables = null;
+var searchDocs = (requests) => {
+  var txt = requests[0].params.query;
+  console.log(requests);
+  var hits = [];
+  if(txt == null || txt.trim() === "") {
+    hits = [] 
+  } else {
+    if(true || searchables === null) {
+      searchables = traverseDOMInside( document.querySelector('.content'), () => {});
+    } 
+    var filteredSearchables = filterSearchables(txt.trim(), searchables);
+    hits = filteredSearchables.map(matchedSearchableToHit);
+  }
+  // https://www.algolia.com/doc/api-reference/api-methods/search-rules/#json-format
+  // https://www.algolia.com/doc/api-reference/api-methods/search-synonyms/#method-response-value
+  //
+  // From: https://www.algolia.com/doc/guides/building-search-ui/going-further/backend-search/how-to/highlighting-snippeting/#response-information
+  // The Algolia response will include a _highlightResult for each attribute,
+  // which will contain the attribute’s value with highlighting, the match
+  // level (how much of the query words were matched), a boolean indicating if
+  // the whole attribute is highlighted, and the matched words for each
+  // attribute. This is seen as follows:
+  return {
+    hits: hits,
+    nbHits: 6022,
+    page: 0,
+    nbPages: 200,
+    hitsPerPage: 5,
+    exhaustiveNbHits: true,
+    query: "z",
+    queryAfterRemoval: "z",
+    params: "query=z&hitsPerPage=5",
+    processingTimeMS: 2,
+  };
+
+
+  var highlightResult = {
+    results: [
+      {
+        hits: [
+          {
+            name: "Amazon - Fire TV Stick with Alexa Voice Remote - Black",
+            description:
+              "Enjoy smart access to videos, games and apps with this Amazon Fire TV stick. Its Alexa voice remote lets you deliver hands-free commands when you want to watch television or engage with other applications. With a quad-core processor, 1GB internal memory and 8GB of storage, this portable Amazon Fire TV stick works fast for buffer-free streaming.",
+            brand: "Amazon",
+            categories: ["TV & Home Theater", "Streaming Media Players"],
+            hierarchicalCategories: {
+              lvl0: "TV & Home Theater",
+              lvl1: "TV & Home Theater > Streaming Media Players",
+            },
+            type: "Streaming media plyr",
+            price: 39.99,
+            price_range: "1 - 50",
+            image: "https://cdn-demo.algolia.com/bestbuy-0118/5477500_sb.jpg",
+            url: "https://api.bestbuy.com/click/-/5477500/pdp",
+            free_shipping: false,
+            rating: 4,
+            popularity: 21469,
+            objectID: "5477500",
+            _highlightResult: {
+              name: {
+                value:
+                  "Amazon - <ais-highlight-0000000000>Fire</ais-highlight-0000000000> TV Stick with Alexa Voice Remote - Black",
+                matchLevel: "full",
+                fullyHighlighted: false,
+                matchedWords: ["fire"],
+              },
+              description: {
+                value:
+                  "Enjoy smart access to videos, games and apps with this Amazon <ais-highlight-0000000000>Fire</ais-highlight-0000000000> TV stick. Its Alexa voice remote lets you deliver hands-free commands when you want to watch television or engage with other applications. With a quad-core processor, 1GB internal memory and 8GB of storage, this portable Amazon <ais-highlight-0000000000>Fire</ais-highlight-0000000000> TV stick works fast for buffer-free streaming.",
+                matchLevel: "full",
+                fullyHighlighted: false,
+                matchedWords: ["fire"],
+              },
+              brand: { value: "Amazon", matchLevel: "none", matchedWords: [] },
+              categories: [
+                {
+                  value: "TV & Home Theater",
+                  matchLevel: "none",
+                  matchedWords: [],
+                },
+                {
+                  value: "Streaming Media Players",
+                  matchLevel: "none",
+                  matchedWords: [],
+                },
+              ],
+              type: {
+                value: "Streaming media plyr",
+                matchLevel: "none",
+                matchedWords: [],
+              },
+            },
+          },
+          {
+            name: "Landmann - Log Grabber - Black",
+            description:
+              "Landmann Log Grabber: Three gripping tongs firmly grasp logs up to 8\" thick, so you can adjust firewood while your hands remain a safe distance from open flames. The lever-action handle's rubber grip provides comfort during use.",
+            brand: "Landmann",
+            categories: [
+              "Housewares",
+              "Outdoor Living",
+              "Patio Furniture & Decor",
+              "Fire Pits",
+            ],
+            hierarchicalCategories: {
+              lvl0: "Housewares",
+              lvl1: "Housewares > Outdoor Living",
+              lvl2: "Housewares > Outdoor Living > Patio Furniture & Decor",
+              lvl3:
+                "Housewares > Outdoor Living > Patio Furniture & Decor > Fire Pits",
+            },
+            type: "",
+            price: 19.99,
+            price_range: "1 - 50",
+            image: "https://cdn-demo.algolia.com/bestbuy-0118/4239510_sb.jpg",
+            url: "https://api.bestbuy.com/click/-/4239510/pdp",
+            free_shipping: true,
+            rating: 0,
+            popularity: 12281,
+            objectID: "4239510",
+            _highlightResult: {
+              name: {
+                value: "Landmann - Log Grabber - Black",
+                matchLevel: "none",
+                matchedWords: [],
+              },
+              description: {
+                value:
+                  "Landmann Log Grabber: Three gripping tongs firmly grasp logs up to 8\" thick, so you can adjust firewood while your hands remain a safe distance from open flames. The lever-action handle's rubber grip provides comfort during use.",
+                matchLevel: "none",
+                matchedWords: [],
+              },
+              brand: { value: "Landmann", matchLevel: "none", matchedWords: [] },
+              categories: [
+                { value: "Housewares", matchLevel: "none", matchedWords: [] },
+                { value: "Outdoor Living", matchLevel: "none", matchedWords: [] },
+                {
+                  value: "Patio Furniture & Decor",
+                  matchLevel: "none",
+                  matchedWords: [],
+                },
+                {
+                  value:
+                    "<ais-highlight-0000000000>Fire</ais-highlight-0000000000> Pits",
+                  matchLevel: "full",
+                  fullyHighlighted: false,
+                  matchedWords: ["fire"],
+                },
+              ],
+              type: { value: "", matchLevel: "none", matchedWords: [] },
+            },
+          },
+          {
+            name: "Landmann - Ball of Fire Fire Pit - Black",
+            description:
+              "Landmann Ball of Fire Fire Pit: Enhance a gathering with the inviting look of a glowing fire with this fire pit that creates the illusion that the fire is hovering. A pivoting section with an extra-large handle lets you easily tend the fire.",
+            brand: "Landmann",
+            categories: [
+              "Housewares",
+              "Outdoor Living",
+              "Patio Furniture & Decor",
+              "Fire Pits",
+            ],
+            hierarchicalCategories: {
+              lvl0: "Housewares",
+              lvl1: "Housewares > Outdoor Living",
+              lvl2: "Housewares > Outdoor Living > Patio Furniture & Decor",
+              lvl3:
+                "Housewares > Outdoor Living > Patio Furniture & Decor > Fire Pits",
+            },
+            type: "",
+            price: 199.99,
+            price_range: "100 - 200",
+            image: "https://cdn-demo.algolia.com/bestbuy-0118/4239505_sb.jpg",
+            url: "https://api.bestbuy.com/click/-/4239505/pdp",
+            free_shipping: false,
+            rating: 5,
+            popularity: 10706,
+            objectID: "4239505",
+            _highlightResult: {
+              name: {
+                value:
+                  "Landmann - Ball of <ais-highlight-0000000000>Fire</ais-highlight-0000000000> <ais-highlight-0000000000>Fire</ais-highlight-0000000000> Pit - Black",
+                matchLevel: "full",
+                fullyHighlighted: false,
+                matchedWords: ["fire"],
+              },
+              description: {
+                value:
+                  "Landmann Ball of <ais-highlight-0000000000>Fire</ais-highlight-0000000000> <ais-highlight-0000000000>Fire</ais-highlight-0000000000> Pit: Enhance a gathering with the inviting look of a glowing <ais-highlight-0000000000>fire</ais-highlight-0000000000> with this <ais-highlight-0000000000>fire</ais-highlight-0000000000> pit that creates the illusion that the <ais-highlight-0000000000>fire</ais-highlight-0000000000> is hovering. A pivoting section with an extra-large handle lets you easily tend the <ais-highlight-0000000000>fire</ais-highlight-0000000000>.",
+                matchLevel: "full",
+                fullyHighlighted: false,
+                matchedWords: ["fire"],
+              },
+              brand: { value: "Landmann", matchLevel: "none", matchedWords: [] },
+              categories: [
+                { value: "Housewares", matchLevel: "none", matchedWords: [] },
+                { value: "Outdoor Living", matchLevel: "none", matchedWords: [] },
+                {
+                  value: "Patio Furniture & Decor",
+                  matchLevel: "none",
+                  matchedWords: [],
+                },
+                {
+                  value:
+                    "<ais-highlight-0000000000>Fire</ais-highlight-0000000000> Pits",
+                  matchLevel: "full",
+                  fullyHighlighted: false,
+                  matchedWords: ["fire"],
+                },
+              ],
+              type: { value: "", matchLevel: "none", matchedWords: [] },
+            },
+          },
+        ],
+        nbHits: 705,
+        page: 0,
+        nbPages: 235,
+        hitsPerPage: 3,
+        exhaustiveNbHits: true,
+        query: "fire ",
+        queryAfterRemoval: "fire ",
+        params:
+          "highlightPreTag=%3Cais-highlight-0000000000%3E&highlightPostTag=%3C%2Fais-highlight-0000000000%3E&hitsPerPage=3&query=fire%20&page=0&facets=%5B%5D&tagFilters=",
+        index: "instant_search",
+        processingTimeMS: 2,
+      },
+    ],
+  };
+
+  return {
+    "hits":[
+      {
+        "condition":{
+          "pattern":"smartphone",
+          "anchoring":"contains"
+        },
+        "consequence":{
+          "params":{
+            "filters":"category = 1"
+          }
+        },
+        "objectID":"a-rule-id",
+        "_highlightResult":{
+          "condition":{
+            "pattern":{
+              "value":"<b>s<\/b>martphone",
+              "matchLevel":"full",
+              "fullyHighlighted":false,
+              "matchedWords":[
+                "s"
+              ]
+            },
+            "anchoring":{
+              "value":"contains",
+              "matchLevel":"none",
+              "matchedWords":[
+
+              ]
+            }
+          },
+          "consequence":{
+            "params":{
+              "filters":{
+                "value":"category = 1",
+                "matchLevel":"none",
+                "matchedWords":[
+
+                ]
+              }
+            }
+          }
+        }
+      }
+    ],
+    "nbHits":1,
+    "page":0,
+    "nbPages":1
+  };
+};
+
+var hitExample = {
+  "name":"title one","alternative_titles":["alternative title 1"], "image":"https://image.tmdb.org/t/p/w154/eVP2IJCWmvb6lZRlyFFcFavBKvU.jpg","score":7.448484848484849,"rating":4,"actors":[],"actor_facets":[],"genre":["Crime"],"objectID":"439585470",
+  "_highlightResult": {
+    "name": {
+      "value": "Dear <em>Z</em>achary: A Letter to a Son About His Father","matchLevel":"full","fullyHighlighted":false,"matchedWords":["z"]
+    },
+    "year":{
+      "value":"2008","matchLevel":"none","matchedWords":[]
+    }
+  }
+};
+
 /**
  * Reload is just a paired down version of Flatdoc with some additional
  * features, and many features removed.
@@ -41,8 +626,8 @@
  * defines a body.
  */
 function detectDocOrStyleIfNotNodeScript() {
-  let hasParentFrame = window.parent !== window;
-  let hasBody = document.body !== null;
+  var hasParentFrame = window.parent !== window;
+  var hasBody = document.body !== null;
   return hasParentFrame || hasBody;
 };
 
@@ -59,7 +644,7 @@ if(typeof process !== 'undefined') {
     var Inliner = require('inliner');
 
 
-    let siteDir = __dirname;
+    var siteDir = __dirname;
 
     var pathToChrome =
       process.platform === 'win32' ?
@@ -69,8 +654,8 @@ if(typeof process !== 'undefined') {
     var cmd = pathToChrome + " " + path.join(siteDir, "index.dev.html") + ' --headless --dump-dom --virtual-time-budget=400';
     var rendered = require('child_process').execSync(cmd).toString();
 
-    let renderedHtmlPath = path.join(siteDir, 'index.rendered.html');
-    let indexHtmlPath = path.join(siteDir, 'index.html');
+    var renderedHtmlPath = path.join(siteDir, 'index.rendered.html');
+    var indexHtmlPath = path.join(siteDir, 'index.html');
     fs.writeFileSync(renderedHtmlPath, rendered);
 
     console.log("INLINING PAGE: ", indexHtmlPath);

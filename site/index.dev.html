@@ -7,6 +7,14 @@
 
   <title>Reload</title>
 
+  
+  <!-- https://www.algolia.com/doc/guides/building-search-ui/going-further/backend-search/in-depth/backend-instantsearch/js/#introduction -->
+  <script src="https://cdn.jsdelivr.net/npm/algoliasearch@4.0.0/dist/algoliasearch-lite.umd.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/instantsearch.js@4.4.0/dist/instantsearch.development.js" crossorigin="anonymous"></script>
+  
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/instantsearch.css@7.3.1/themes/algolia.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/instantsearch.css@7.3.1/themes/reset.css">
+  
   <!-- Reload -->
   <script class="removeFromRenderedPage" src='vendor/highlight.pack.js'></script>
   <script src='vendor/jquery.js'></script>
@@ -76,7 +84,10 @@
       </ul>
     </div>
     <div class='right'>
+      <div id="searchbox"></div>
     </div>
+    <div style="display:none" id="pagination"></div>
+    <div id="hits"></div>
   </div>
 
   <div class='content-root'>
@@ -88,5 +99,68 @@
     </div>
     <div role='flatdoc-content' class='content'></div>
   </div>
+ <script>
+    
+    const customSearchClient = {
+      search(requests) {
+        return {
+          then: (cb) => {
+            console.log('results');
+            cb({
+              results: [
+                searchDocs(requests)
+              ]
+            });
+            return {
+              catch: (cb) => {
+
+              }
+            }
+          }
+        };
+      }
+    };
+    const search = instantsearch({
+      indexName: 'demo_ecommerce',
+      searchClient: customSearchClient,
+    });
+
+    search.addWidgets([
+      instantsearch.widgets.pagination({
+        container: '#pagination',
+      }),
+      instantsearch.widgets.searchBox({
+        showSubmit: false,
+        placeholder: "Search Docs",
+        container: '#searchbox',
+        searchAsYouType: true,
+        templates: {
+          submit: '<div>SUBMIT</div>'
+        },
+        queryHook(query, search) {
+          search(query);
+        },
+      }),
+
+      instantsearch.widgets.hits({
+        escapeHTML: false,
+        container: '#hits',
+        templates: {
+          item(hit) {
+            return `
+              <div class="hit-content">${hit._highlightResult.content.value}</div>
+            </div>
+            `;
+          },
+        },
+
+      })
+    ]);
+
+    search.start();
+
+        
+  </script> 
 </body>
+
 </html>
