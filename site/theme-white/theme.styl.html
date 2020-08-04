@@ -13,7 +13,7 @@ $minipad = 20px  // Space for mobile
 $vmargin = 16px  // Margin between blocks
 
 // Colors
-$offwhite = #fafafa
+$offwhite = #f8f8f8
 $codebg = #f7fafc
 $hitsbg = white
 $codeborder = #eceff3
@@ -22,9 +22,12 @@ $lightgrey = #b0b0b0
 $txt = #444444
 $txtlight = #888888
 $accent = #556cd6 * 0.85
-$line = #e3e8ee 
-$linedarker = #dde2e9 
-$headerbg = #fafafa 
+$line = #e8e8e8 
+$linedarker = #d8d8d8 
+$linelighter = #f0f0f0 
+$headerbg = #f8f8f8 
+$header-height = 52px
+
 // This could probably be derived from the others.
 // It's the main right column
 $rightcolumnwidth=380px
@@ -80,6 +83,9 @@ global-reset()
     font-weight: normal
   a img
     border: none
+  *
+    -webkit-box-sizing: border-box
+    box-sizing: border-box
 
 clearfix()
   &:before
@@ -197,14 +203,12 @@ a
 .content
   img
     margin: 0
-    box-sizing: border-box
 
   .imageContainer
     margin: $vmargin 0
 
   p, ul, ol, h1, h2, h3, h4, h5, h6, pre, blockquote
     padding: $vmargin 0
-    box-sizing: border-box
 
   h1, h2, h3, h4, h5, h6
     font-weight: bold
@@ -241,7 +245,6 @@ a
       width: 5px
       height: 5px
       border-radius: 4px
-      box-sizing: border-box
       background: white
       border: solid 1px $grey
 
@@ -538,14 +541,30 @@ pre > code
 // Search results
 // --------------
 
+// Hide scrollbar but still make scrollable
 #hits
+  &::-webkit-scrollbar
+    display: none
+#hits
+  overflow-x:scroll
+  -ms-overflow-style: none  /* IE and Edge */
+  scrollbar-width: none  /* Firefox */
+
+#hits [class^='ais-']
+  line-height: 20px !important
+  font-size:14px !important
+#hits .ais-Hits
+  background-color: #fcfcfc
+#hits
+  line-height: 20px !important
+  font-size:14px !important
   overflow: auto
   scrollbar($offwhite)
 
   /* Bottom: 100% makes it grow upwards */
   /* Total header height should be 52 = vmargin*2 + line-height(20) */
   background-color:$hitsbg
-  top: 52px
+  top: $header-height
   .ais-Hits
     color: $txt
     box-shadow: 0 2px 5px 0px #444444
@@ -580,7 +599,6 @@ pre > code
         width: 5px
         height: 5px
         border-radius: 4px
-        box-sizing: border-box
         background: transparent
         border: solid 1px $lightgrey
 
@@ -630,8 +648,9 @@ pre > code
   #hits
     /* btw: Bottom: 100% makes it grow upwards */
     $w = ($sidebar-width + $content-width)
-    left: $w
-    right: 0
+    // https://stackoverflow.com/questions/27256849/is-it-possible-to-use-vh-minus-pixels-in-a-css-calc
+    // Stylus form of calc
+    max-height: 'calc(%s - %s)' % (100vh 92px)
     
 // SUPPPPPPPPPER wide (create right nav for search results)
 @media (min-width: 1180px + $rightdockedhitscolumnwidth) /* Big desktop */
@@ -692,7 +711,6 @@ pre > code
           margin-top:$pad */
         p, ul, ol, h1, h2, h3, h4, h5, h6, pre, blockquote
           width: $content-width
-          box-sizing: border-box
           padding-right: $pad
           padding-left: $pad
         h1, h2, h3
@@ -763,6 +781,7 @@ pre > code
   z-index:101
   /* text-shadow: 0 1px 0 rgba(white, 0.5) */
   border-bottom: solid 1px $line
+  border-top: solid 1px $line
   padding: $vmargin $sidepad $vmargin $sidepad
   position: -webkit-sticky
   position: sticky
@@ -832,6 +851,10 @@ pre > code
     flex-direction: row-reverse; 
   #searchbox
     display:flex
+    height: $header-height - 2*10px
+    line-height: 100%;
+  .ais-SearchBox-input
+    height: $header-height - 2*10px
 
   #hits
     position:absolute
@@ -850,7 +873,6 @@ pre > code
   antialias()
   .section
     padding: $sidepad $sidepad
-    box-sizing: border-box
 
   .section + .section
     border-top: solid 1px $line
@@ -861,7 +883,6 @@ pre > code
 
 a.big.button
   display: block
-  box-sizing: border-box
   width: 100%
   padding: 10px 20px
   text-align: center
@@ -940,7 +961,6 @@ a.big.button
     margin-top: 20px
 
   a
-    box-sizing: border-box
     position: relative
 
     display: block
@@ -982,7 +1002,6 @@ a.big.button
       visibility: hidden
       content: ''
       display: block
-      box-sizing: border-box
 
       position: absolute
       top: 10px
@@ -1064,8 +1083,6 @@ code
 .title-card .headline
   vertical-align: middle
   display: inline-block
-  -webkit-box-sizing: border-box
-  box-sizing: border-box
 
   /* text-shadow: 0 0 4px rgba(0, 0, 0, 0.5); */
 
