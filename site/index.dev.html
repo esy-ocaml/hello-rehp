@@ -9,11 +9,13 @@
 
   
   <!-- https://www.algolia.com/doc/guides/building-search-ui/going-further/backend-search/in-depth/backend-instantsearch/js/#introduction -->
+  <!--
   <script src="https://cdn.jsdelivr.net/npm/algoliasearch@4.0.0/dist/algoliasearch-lite.umd.js" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/instantsearch.js@4.4.0/dist/instantsearch.development.js" crossorigin="anonymous"></script>
   
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/instantsearch.css@7.3.1/themes/algolia.css">
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/instantsearch.css@7.3.1/themes/reset.css">
+  -->
   
   <!-- Reload -->
   <script class="removeFromRenderedPage" src='vendor/highlight.pack.js'></script>
@@ -28,9 +30,7 @@
 
   <!-- fonts -->
   <link  href='./fonts/PrivateCodingFont.css' rel='stylesheet'>
-  <link  href='./fonts/PrivateWordFont.css' rel='stylesheet'>
   <!-- if including a private coding font/word font, remove the non-private one from document after rendering to avoid bundling it -->
-  <link href='./fonts/CodingFont.css' rel='stylesheet'>
   <link href='./fonts/WordFont.css' rel='stylesheet'>
 
   <!-- Initializer -->
@@ -44,7 +44,9 @@
           value === 'json' ? 'javascript' : value,
           code
         ).value;
-      }
+      },
+      searchInputId: 'the-search-input',
+      searchHitsId: 'the-search-hits'
     });
   </script>
 
@@ -77,19 +79,33 @@
 
   <div class='header'>
     <div class='left'>
-      <h1><a href='./index.html'>reload</a></h1>
-      <ul>
-        <li><a href="https://github.com/esy/pesy">GitHub</a></li>
-        <li><a href="https://github.com/esy/pesy/issues">Issues</a></li>
-      </ul>
+      <span style="background-color: #e0e0e0" class="header-icon"></span>
+      <div class="links">
+        <h1><a href='./index.html'>reload</a></h1>
+        <ul class="collapsable">
+          <li><a href="https://github.com/esy/pesy">GitHub</a></li>
+          <li><a href="https://github.com/esy/pesy/issues">Issues</a></li>
+        </ul>
+      </div>
     </div>
     <div class='right'>
-      <div id="searchbox"></div>
+      <!-- <div id="searchbox"></div> -->
+      <!--
+      <form>
+        <input class="ais-SearchBox-input" type="search" />
+        <button type="reset" value="reset">reset</button>
+      </form>
+      -->
+      <form class="search-form">
+        <input id="the-search-input" type="text" name="focus" required class="search-input" placeholder="Enter search term" />
+        <button tabindex=1 class="close-icon" type="reset"></button>
+        <div class="search-style"></div>
+      </form>
+
     </div>
     <div style="display:none" id="pagination"></div>
-    <div id="hits"></div>
   </div>
-
+  <div id="the-search-hits"></div>
   <div class='content-root'>
     <div class='menubar'>
       <div class='section'>
@@ -101,6 +117,7 @@
   </div>
  <script>
     
+   /*
     const customSearchClient = {
       search(requests) {
         return {
@@ -158,6 +175,7 @@
     ]);
 
     search.start();
+    */
 
         
   </script> 

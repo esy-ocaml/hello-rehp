@@ -28,6 +28,13 @@ $linelighter = #f0f0f0
 $headerbg = #f8f8f8 
 $header-height = 52px
 
+$button-border = #4153a4
+$button-border-hover = #3a4a92
+$button-border-focus = #2b376d
+$button-bg-hoverfocus = #4153a4
+$button-bg-active = #3a4a92
+$button-border-active = #32407f
+
 // This could probably be derived from the others.
 // It's the main right column
 $rightcolumnwidth=380px
@@ -498,6 +505,10 @@ pre > code
 
 .button
   antialias()
+  transition-property: box-shadow, background, border-color
+  transition: 60ms ease-in 0s
+  box-shadow: rgba(15,15,15,0.1) 0px 1px 2px
+  user-select: none
   font-family: WordFont, sans-serif
   letter-spacing: 0px
   font-weight: bold
@@ -505,7 +516,7 @@ pre > code
   display: inline-block
   padding: 3px 25px
 
-  border: solid 2px $accent
+  border: solid 2px $button-border
   border-radius: 20px
 
   margin-right: 15px
@@ -517,10 +528,18 @@ pre > code
 
   &:hover, &:focus
     text-decoration: none
-    border-color: #111
-    background: #111
+    border-color: $button-border-hover
+    background: $button-bg-hoverfocus
     color: white
-
+  &:focus
+    text-decoration: none;
+    border-color: $button-border-focus
+  &:active
+    text-decoration: none;
+    border-color: $button-border-active
+    background-color: $button-bg-active
+    box-shadow: none;
+  
   &.light
     &, &:visited
       background: transparent
@@ -683,8 +702,18 @@ pre > code
     .content-root
       background-color: $offwhite
       $w = ($sidebar-width + $content-width)
-      /* Fix major perf issue on firefox by commenting this out: https://github.com/zachlatta/reason/commit/787b8f783288d0337a3fab5b71c54d6d5630ef6e */
-      box-shadow: inset $w 0 white, inset ($w + 1) 0 $line, inset ($w + 10) 0 5px -10px rgba(black, $shadow-str)
+      /* Shadow on the book split */
+      background: linear-gradient(90deg, transparent 776px, #f6f6f6 776px, #f8f8f8 784px);
+      &:before
+        background-color: $line
+        content: "";
+        display: block;
+        width: 1px;
+        height: 100%;
+        position: absolute;
+        z-index: 0;
+        top: 0;
+        left: 776px; /* Can actually ues a calc to get stretchy split calc(50% - 1px); */
 
 // Literate mode
 @media (min-width: 1180px) /* Big desktop */
@@ -782,89 +811,413 @@ pre > code
   /* text-shadow: 0 1px 0 rgba(white, 0.5) */
   border-bottom: solid 1px $line
   border-top: solid 1px $line
-  padding: $vmargin $sidepad $vmargin $sidepad
+  padding: $vmargin $pad $vmargin $pad
   position: -webkit-sticky
   position: sticky
+  line-height: 20px;
   top: 0px;
   clearfix()
 
   line-height: 20px
+  
+.header:before,
+.header:after {
+  content: "";
+  display: table;
+}
+.header:after {
+  clear: both;
+}
+.header .header-icon {
+  height: 32px;
+  display: flex;
+  line-height: 100%;
+  float: left;
+/*
+    position: absolute
+    left: $pad_under_480
+    top: 10px
+    */
+  width: 32px;
+  height: 32px;
+}
+.header .left {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  float: left;
+}
+.header .left h1 {
+  display: none;
+}
+.header .left ul {
+  display: none;
+}
+@media (min-width: 480px) {
+  .header .left h1 {
+    float: left;
+    display: block;
+  }
+  .header .left ul,
+  .header .left li {
+    display: block;
+    float: left;
+    display: block;
+  }
+  .header .left ul {
+    margin-left: -15px;
+  }
+  .header .left .header-icon + .links h1 {
+    margin-left: 15px;
+  }
+  .header .left h1 + ul {
+    border-left: solid 1px #e8e8e8;
+    margin-left: 15px;
+  }
+  .header .left li {
+    border-left: solid 1px rgba(255,255,255,0.5);
+    border-right: solid 1px #e8e8e8;
+  }
+  .header .left li:last-child {
+    border-right: 0;
+  }
+  .header .left li a {
+    padding: 0 15px;
+  }
+}
+.header .left h1 {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-weight: bold;
+  font-family: WordFont, sans-serif;
+  font-size: 1em;
+}
+.header .left h1,
+.header .left h1 a,
+.header .left h1 a:visited {
+  color: #909090;
+}
+.header .left h1 a:hover,
+.header .left h1 a:focus {
+  text-decoration: none;
+  color: #444;
+}
+.header .left li a {
+  font-size: 1em;
+  color: #909090;
+  display: block;
+}
+.header .left li a:hover,
+.header .left li a:focus {
+  text-decoration: none;
+  color: #3a3a3a;
+}
+@media (max-width: 480px) {
+  .header {
+    padding: 16px 20px 16px 20px;
+  }
+}
+@media (max-width: 768px) {
+  .header .links .collapsable {
+    display: none;
+  }
+}
 
-  .left
-    float: left
-    @media (min-width: 480px) /* Tablet & Desktop */
-      h1
-        float: left
 
-      ul, li
-        display: block
-        float: left
-
-      ul
-        margin-left: -15px
-
-      h1 + ul
-        border-left: solid 1px $line
-        margin-left: 15px
-
-      li
-        border-left: solid 1px rgba(white, 0.5)
-        border-right: solid 1px $line
-        &:last-child
-          border-right: 0
-
-      li a
-        padding: 0 15px
-    
-    h1
-      antialias()
-      font-weight: bold
-      font-family: WordFont, sans-serif
-      font-size: 1em
-
-      &, a, a:visited
-        color: $grey
-      a:hover, a:focus
-        text-decoration: none
-        color: $txt
-
-    li a
-      font-size: 1em
-      color: $grey
-      display: block
-
-      &:hover, &:focus
-        text-decoration: none
-        color: $grey*0.4
-
-
-  /* Total header height should be 52 = vmargin*2 + line-height(20) */
-  .right
-    display: flex;
-    align-items: center;
-    width: 300px;
-    position: absolute;
-    top: 0px;
-    bottom: 0px;
-    right: 30px;
-    line-height: 100%;
-    flex-direction: row-reverse; 
-  #searchbox
-    display:flex
-    height: $header-height - 2*10px
-    line-height: 100%;
-  .ais-SearchBox-input
-    height: $header-height - 2*10px
-
-  #hits
-    position:absolute
-
+/**
+ * Search UI.
+ */
+@media (max-width: 768px) {
+  .menubar {
+    display: none;
+  }
+}
+.header {
+  height: 52px;
+/* Total header height should be 52 = vmargin*2 + line-height(20) */
+/* Total header height should be 52 = vmargin*2 + line-height(20) */
+}
+.header .search-input:focus,
+.header .search-input {
+  z-index: 1;
+  background-color: transparent;
+  padding-left: 6px;
+  padding-right: 6px;
+  outline-style: none;
+  box-shadow: none;
+  border-color: transparent;
+  outline: none;
+}
+.header .search-input ~ .close-icon ~ .search-style {
+  z-index: 0;
+  pointer-events: none;
+  position: absolute;
+  background-color: rgba(255,255,255,0.6);
+  border: 1px solid #d8d8d8;
+  border-radius: 3px;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+}
+.header .search-input:focus ~ .close-icon ~ .search-style {
+  border: 1px solid #b0b0b0;
+}
+.header .search-input,
+.header .search-form {
+  position: relative;
+  width: 100%;
+  height: 32px;
+  display: flex;
+  line-height: 100%;
+  z-index: 0;
+}
+.header .close-icon {
+  display: none;
+  position: relative;
+  border: 1px solid transparent;
+  background-color: transparent;
+  display: inline-block;
+  vertical-align: middle;
+  outline: 0;
+  cursor: pointer;
+}
+.header .close-icon:after {
+  content: "x";
+  display: block;
+  width: 10px;
+  height: 10px;
+  position: absolute;
+  line-height: 10px;
+  z-index: 1;
+  right: 8px;
+  top: 0;
+  bottom: 0;
+  margin: auto;
+  padding: 2px;
+  text-align: center;
+  color: #b0b0b0;
+  font-weight: normal;
+  font-size: 12px;
+  cursor: pointer;
+}
+.header .search-input:not(:valid) ~ .close-icon {
+  display: none;
+}
+.header .right {
+  display: flex;
+  align-items: center;
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  right: 30px;
+  line-height: 100%;
+  flex-direction: row-reverse;
+}
+@media (max-width: 480px) {
+  .header .right {
+    left: 72px;
+    right: 20px;
+  }
+}
+@media (min-width: 480px) {
+  .header .right {
+    width: 240px;
+  }
+}
 
 
 @media (max-width: 480px) /* Mobile */
   // Hide extra stuff on mobile
   .right
     display: none
+
+@media (min-width: 500px) {
+  .reload-hits {
+    width: 450px;
+  }
+}
+@media (max-width: 500px) {
+  .reload-hits {
+    width: 100%;
+  }
+}
+.reload-hits-noresults-list {
+  display: flex;
+  justify-content: center;
+  margin-top: 30vh;
+  font-size: 20px;
+  color: #909090;
+}
+.reload-hits.reload-hits-empty {
+  transition: all 0.18s ease-in-out;
+  transform: translateX(450px);
+}
+.reload-hits {
+  box-shadow: 0 2px 30px 0 rgba(0,0,0,0.1);
+  transform: translateX(0px);
+  transition: all 0.18s ease-in-out;
+/* Make it be as big as the viewport minus header height */
+/* Keep this in sync with the $header-height (can't use dollar in calc with stylus) */
+  height: calc(100vh - 52px);
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+}
+.reload-hits::-webkit-scrollbar {
+  display: none;
+}
+.reload-hits {
+  z-index: 2;
+  overflow-x: scroll;
+  -ms-overflow-style: none /* IE and Edge */;
+  scrollbar-width: none /* Firefox */;
+}
+.reload-in-doc-highlight {
+  background-color: rgba(255,241,168,0.533);
+  transition: background-color 1.5s ease-out 0.3s;
+}
+.reload-hits {
+  border-left: 1px solid #e8e8e8;
+  line-height: 20px !important;
+  font-size: 14px !important;
+}
+.reload-hits {
+  background-color: #fcfcfc;
+}
+.reload-hits {
+  color: #444;
+  line-height: 20px !important;
+  font-size: 14px !important;
+  overflow: auto;
+/* Bottom: 100% makes it grow upwards */
+/* Total header height should be 52 = vmargin*2 + line-height(20) */
+  background-color: #fff;
+/* Minus one because of the top border of the header doesn't count for top */
+}
+.reload-hits {
+  -webkit-overflow-scrolling: touch;
+}
+.reload-hits::-webkit-scrollbar {
+  width: 15px;
+  height: 15px;
+}
+.reload-hits::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 8px;
+  border: solid 4px #f8f8f8;
+}
+.reload-hits:hover::-webkit-scrollbar-thumb {
+  background: #999;
+  box-shadow: inset 2px 2px 3px rgba(0,0,0,0.2);
+}
+.reload-hits .reload-hits-list {
+  flex-wrap: nowrap;
+  flex-direction: column;
+  margin: 0;
+  border-top: none;
+}
+.reload-hits .reload-hits-item:first-child {
+  border-top: none;
+}
+.reload-hits .reload-hits-item {
+  cursor: pointer;
+  opacity: 0.9;
+  transition: transform 0.05s ease-out 0s, background-color 0.2s ease-out 0s;
+  border-top: 0.5px solid #f0f0f0;
+  padding: 20px;
+  border-bottom: none;
+/* By default is: */
+/* width: calc(25% - 1rem) */
+  width: 100%;
+  margin: 0;
+  box-shadow: none;
+}
+.reload-hits .reload-hits-item:hover {
+  background-color: #f2f4fa;
+}
+.reload-hits .reload-hits-item:focus {
+  background-color: #f0f2f9;
+}
+.reload-hits .reload-hits-item:hover:focus {
+  background-color: #edeff8;
+}
+.reload-hits .reload-hits-item:active .reload-hits-item-button-contents {
+  user-select: none;
+  transition: transform 0.2s ease-out 0s;
+  transform: scale(0.98);
+}
+.reload-hits .reload-hits-item .reload-hits-item-button-contents {
+  transform: scale(1);
+  transition: transform 0.05s ease-out 0s, background-color 0.2s ease-out 0s;
+}
+.reload-hits .reload-hits-item li {
+  list-style-type: none;
+  position: relative;
+  margin-left: 4px;
+}
+.reload-hits .reload-hits-item li:before {
+  content: '';
+  display: block;
+  position: absolute;
+  left: -17px;
+  top: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 4px;
+  background: transparent;
+  border: solid 1px #b0b0b0;
+}
+.reload-hits .reload-hits-item table > code,
+.reload-hits .reload-hits-item li > code,
+.reload-hits .reload-hits-item tr > code,
+.reload-hits .reload-hits-item td > code,
+.reload-hits .reload-hits-item th > code,
+.reload-hits .reload-hits-item p > code {
+  font-family: PrivateCodingFont, CodingFont, Menlo, monospace;
+  font-size: 0.9em;
+  border: 1px solid #eceff3;
+  background: #f7fafc;
+  border-radius: 2px;
+  padding: 1px 3px;
+  background: #f7fafc;
+  border-radius: 2px;
+  border: 1px solid #eceff3;
+}
+.reload-hits .reload-hits-item pre {
+  font-family: PrivateCodingFont, CodingFont, Menlo, monospace;
+  background: #f8f8f8;
+  display: block;
+  padding: 10px;
+  border-radius: 2px;
+  overflow-x: scroll;
+  -ms-overflow-style: none /* IE and Edge */;
+  scrollbar-width: none /* Firefox */;
+}
+.reload-hits .reload-hits-item pre code {
+  font-size: 0.9em;
+}
+.reload-hits .reload-hits-item pre::-webkit-scrollbar {
+  display: none;
+}
+.reload-hits .reload-hits-item search-highlight {
+  color: #000;
+  background-color: rgba(255,212,0,0.376);
+  border-radius: 2px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+  padding-left: 3px;
+  padding-right: 3px;
+/* Now remove the padding - but also remove one for the border */
+/* This is so that when typing the text around it doesn't move */
+  margin-left: -4px;
+  margin-right: -4px;
+  border: 1px solid rgba(211,176,0,0.502);
+}
 
 // ----------------------------------------------------------------------------
 // Sidebar
@@ -1042,7 +1395,6 @@ code
   box-sizing: border-box
   antialias()
   text-align: center
-  border-bottom: solid 1px $line
   overflow: hidden
 
   > img.bg

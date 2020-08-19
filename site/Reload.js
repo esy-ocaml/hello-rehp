@@ -195,7 +195,7 @@ var trustedTraverseAndHighlightImpl = function traverseAndHighlightImpl(regex, t
   switch(node.tagName.toLowerCase()) {
     case 'a':
       var href = node.getAttributeNode("href");
-      openTag = href ? '<a href="' + escapeHtml(href.value) + '"' + classAttr + '>' : '<a>';
+      openTag = href ? '<a onclick="false" tabindex=-1 ' + classAttr + '>' : '<a>';
       closeTag = '</a>'
       break;
     case 'code':
@@ -212,9 +212,8 @@ var trustedTraverseAndHighlightImpl = function traverseAndHighlightImpl(regex, t
   return openTag + newInnerHtml + closeTag;
 }
 
-var trustedTraverseAndHighlight = function(text, node) {
-  var regex = new RegExp('(' + escapeRegExpSplitString(text) + ')', 'gi');
-  return trustedTraverseAndHighlightImpl(regex, text, node);
+var trustedTraverseAndHighlight = function(searchRegex, text, node) {
+  return trustedTraverseAndHighlightImpl(searchRegex, text, node);
 };
 
 var traverseDOMInsideImpl = function traverseDOMInsideImpl(context, searchables, node, func) {
@@ -232,19 +231,17 @@ var traverseDOMInsideImpl = function traverseDOMInsideImpl(context, searchables,
   return searchables;
 }
 
-var filterSearchablesLowerCaseImpl = function(searchText, searchablesArray) {
+var filterSearchablesLowerCaseImpl = function(searchRegex, text, searchablesArray) {
   var results = [];
   for(var i = 0; i < searchablesArray.length; i++) {
     var node = searchablesArray[i].node;
     var context = searchablesArray[i].context;
-    var lowerCasedInnerText = node.innerText.toLowerCase();
-    var indexMatch = lowerCasedInnerText.indexOf(searchText);
-    if(indexMatch !== -1) {
+    var innerText = node.innerText;
+    if(searchRegex.test(innerText)) {
       // TODO: Show multiple matches per searchable.
       results.push({
         searchable: searchablesArray[i],
-        indexMatch: indexMatch,
-        highlightedInnerText: trustedTraverseAndHighlight(searchText, node)
+        highlightedInnerText: trustedTraverseAndHighlight(searchRegex, text, node)
       })
     }
   }
@@ -252,12 +249,13 @@ var filterSearchablesLowerCaseImpl = function(searchText, searchablesArray) {
 };
 
 var filterSearchables = function(txt, searchablesArray) {
-  return filterSearchablesLowerCaseImpl(txt, searchablesArray);
+  var searchRegex = new RegExp('(' + escapeRegExpSplitString(txt) + ')', 'gi');
+  return filterSearchablesLowerCaseImpl(searchRegex, txt, searchablesArray);
 };
 
 var matchedSearchableToHit = function(matchedSearchable) {
   return {
-    name:
+    category:
       matchedSearchable.searchable.context.h3 ? matchedSearchable.searchable.context.h3.innerText :
       matchedSearchable.searchable.context.h2 ? matchedSearchable.searchable.context.h2.innerText :
       matchedSearchable.searchable.context.h1 ? matchedSearchable.searchable.context.h1.innerText : "",
@@ -265,6 +263,7 @@ var matchedSearchableToHit = function(matchedSearchable) {
     _highlightResult: {
       content: {
         value: matchedSearchable.highlightedInnerText,
+        nodeInDOM: matchedSearchable.searchable.node,
         matchLevel: "full",
         fullyHighlighted: true,
         matchedWords: ["z"],
@@ -298,7 +297,6 @@ var traverseDOMInside = function(node, func) {
 var searchables = null;
 var searchDocs = (requests) => {
   var txt = requests[0].params.query;
-  console.log(requests);
   var hits = [];
   if(txt == null || txt.trim() === "") {
     hits = [] 
@@ -330,264 +328,6 @@ var searchDocs = (requests) => {
     params: "query=z&hitsPerPage=5",
     processingTimeMS: 2,
   };
-
-
-  var highlightResult = {
-    results: [
-      {
-        hits: [
-          {
-            name: "Amazon - Fire TV Stick with Alexa Voice Remote - Black",
-            description:
-              "Enjoy smart access to videos, games and apps with this Amazon Fire TV stick. Its Alexa voice remote lets you deliver hands-free commands when you want to watch television or engage with other applications. With a quad-core processor, 1GB internal memory and 8GB of storage, this portable Amazon Fire TV stick works fast for buffer-free streaming.",
-            brand: "Amazon",
-            categories: ["TV & Home Theater", "Streaming Media Players"],
-            hierarchicalCategories: {
-              lvl0: "TV & Home Theater",
-              lvl1: "TV & Home Theater > Streaming Media Players",
-            },
-            type: "Streaming media plyr",
-            price: 39.99,
-            price_range: "1 - 50",
-            image: "https://cdn-demo.algolia.com/bestbuy-0118/5477500_sb.jpg",
-            url: "https://api.bestbuy.com/click/-/5477500/pdp",
-            free_shipping: false,
-            rating: 4,
-            popularity: 21469,
-            objectID: "5477500",
-            _highlightResult: {
-              name: {
-                value:
-                  "Amazon - <ais-highlight-0000000000>Fire</ais-highlight-0000000000> TV Stick with Alexa Voice Remote - Black",
-                matchLevel: "full",
-                fullyHighlighted: false,
-                matchedWords: ["fire"],
-              },
-              description: {
-                value:
-                  "Enjoy smart access to videos, games and apps with this Amazon <ais-highlight-0000000000>Fire</ais-highlight-0000000000> TV stick. Its Alexa voice remote lets you deliver hands-free commands when you want to watch television or engage with other applications. With a quad-core processor, 1GB internal memory and 8GB of storage, this portable Amazon <ais-highlight-0000000000>Fire</ais-highlight-0000000000> TV stick works fast for buffer-free streaming.",
-                matchLevel: "full",
-                fullyHighlighted: false,
-                matchedWords: ["fire"],
-              },
-              brand: { value: "Amazon", matchLevel: "none", matchedWords: [] },
-              categories: [
-                {
-                  value: "TV & Home Theater",
-                  matchLevel: "none",
-                  matchedWords: [],
-                },
-                {
-                  value: "Streaming Media Players",
-                  matchLevel: "none",
-                  matchedWords: [],
-                },
-              ],
-              type: {
-                value: "Streaming media plyr",
-                matchLevel: "none",
-                matchedWords: [],
-              },
-            },
-          },
-          {
-            name: "Landmann - Log Grabber - Black",
-            description:
-              "Landmann Log Grabber: Three gripping tongs firmly grasp logs up to 8\" thick, so you can adjust firewood while your hands remain a safe distance from open flames. The lever-action handle's rubber grip provides comfort during use.",
-            brand: "Landmann",
-            categories: [
-              "Housewares",
-              "Outdoor Living",
-              "Patio Furniture & Decor",
-              "Fire Pits",
-            ],
-            hierarchicalCategories: {
-              lvl0: "Housewares",
-              lvl1: "Housewares > Outdoor Living",
-              lvl2: "Housewares > Outdoor Living > Patio Furniture & Decor",
-              lvl3:
-                "Housewares > Outdoor Living > Patio Furniture & Decor > Fire Pits",
-            },
-            type: "",
-            price: 19.99,
-            price_range: "1 - 50",
-            image: "https://cdn-demo.algolia.com/bestbuy-0118/4239510_sb.jpg",
-            url: "https://api.bestbuy.com/click/-/4239510/pdp",
-            free_shipping: true,
-            rating: 0,
-            popularity: 12281,
-            objectID: "4239510",
-            _highlightResult: {
-              name: {
-                value: "Landmann - Log Grabber - Black",
-                matchLevel: "none",
-                matchedWords: [],
-              },
-              description: {
-                value:
-                  "Landmann Log Grabber: Three gripping tongs firmly grasp logs up to 8\" thick, so you can adjust firewood while your hands remain a safe distance from open flames. The lever-action handle's rubber grip provides comfort during use.",
-                matchLevel: "none",
-                matchedWords: [],
-              },
-              brand: { value: "Landmann", matchLevel: "none", matchedWords: [] },
-              categories: [
-                { value: "Housewares", matchLevel: "none", matchedWords: [] },
-                { value: "Outdoor Living", matchLevel: "none", matchedWords: [] },
-                {
-                  value: "Patio Furniture & Decor",
-                  matchLevel: "none",
-                  matchedWords: [],
-                },
-                {
-                  value:
-                    "<ais-highlight-0000000000>Fire</ais-highlight-0000000000> Pits",
-                  matchLevel: "full",
-                  fullyHighlighted: false,
-                  matchedWords: ["fire"],
-                },
-              ],
-              type: { value: "", matchLevel: "none", matchedWords: [] },
-            },
-          },
-          {
-            name: "Landmann - Ball of Fire Fire Pit - Black",
-            description:
-              "Landmann Ball of Fire Fire Pit: Enhance a gathering with the inviting look of a glowing fire with this fire pit that creates the illusion that the fire is hovering. A pivoting section with an extra-large handle lets you easily tend the fire.",
-            brand: "Landmann",
-            categories: [
-              "Housewares",
-              "Outdoor Living",
-              "Patio Furniture & Decor",
-              "Fire Pits",
-            ],
-            hierarchicalCategories: {
-              lvl0: "Housewares",
-              lvl1: "Housewares > Outdoor Living",
-              lvl2: "Housewares > Outdoor Living > Patio Furniture & Decor",
-              lvl3:
-                "Housewares > Outdoor Living > Patio Furniture & Decor > Fire Pits",
-            },
-            type: "",
-            price: 199.99,
-            price_range: "100 - 200",
-            image: "https://cdn-demo.algolia.com/bestbuy-0118/4239505_sb.jpg",
-            url: "https://api.bestbuy.com/click/-/4239505/pdp",
-            free_shipping: false,
-            rating: 5,
-            popularity: 10706,
-            objectID: "4239505",
-            _highlightResult: {
-              name: {
-                value:
-                  "Landmann - Ball of <ais-highlight-0000000000>Fire</ais-highlight-0000000000> <ais-highlight-0000000000>Fire</ais-highlight-0000000000> Pit - Black",
-                matchLevel: "full",
-                fullyHighlighted: false,
-                matchedWords: ["fire"],
-              },
-              description: {
-                value:
-                  "Landmann Ball of <ais-highlight-0000000000>Fire</ais-highlight-0000000000> <ais-highlight-0000000000>Fire</ais-highlight-0000000000> Pit: Enhance a gathering with the inviting look of a glowing <ais-highlight-0000000000>fire</ais-highlight-0000000000> with this <ais-highlight-0000000000>fire</ais-highlight-0000000000> pit that creates the illusion that the <ais-highlight-0000000000>fire</ais-highlight-0000000000> is hovering. A pivoting section with an extra-large handle lets you easily tend the <ais-highlight-0000000000>fire</ais-highlight-0000000000>.",
-                matchLevel: "full",
-                fullyHighlighted: false,
-                matchedWords: ["fire"],
-              },
-              brand: { value: "Landmann", matchLevel: "none", matchedWords: [] },
-              categories: [
-                { value: "Housewares", matchLevel: "none", matchedWords: [] },
-                { value: "Outdoor Living", matchLevel: "none", matchedWords: [] },
-                {
-                  value: "Patio Furniture & Decor",
-                  matchLevel: "none",
-                  matchedWords: [],
-                },
-                {
-                  value:
-                    "<ais-highlight-0000000000>Fire</ais-highlight-0000000000> Pits",
-                  matchLevel: "full",
-                  fullyHighlighted: false,
-                  matchedWords: ["fire"],
-                },
-              ],
-              type: { value: "", matchLevel: "none", matchedWords: [] },
-            },
-          },
-        ],
-        nbHits: 705,
-        page: 0,
-        nbPages: 235,
-        hitsPerPage: 3,
-        exhaustiveNbHits: true,
-        query: "fire ",
-        queryAfterRemoval: "fire ",
-        params:
-          "highlightPreTag=%3Cais-highlight-0000000000%3E&highlightPostTag=%3C%2Fais-highlight-0000000000%3E&hitsPerPage=3&query=fire%20&page=0&facets=%5B%5D&tagFilters=",
-        index: "instant_search",
-        processingTimeMS: 2,
-      },
-    ],
-  };
-
-  return {
-    "hits":[
-      {
-        "condition":{
-          "pattern":"smartphone",
-          "anchoring":"contains"
-        },
-        "consequence":{
-          "params":{
-            "filters":"category = 1"
-          }
-        },
-        "objectID":"a-rule-id",
-        "_highlightResult":{
-          "condition":{
-            "pattern":{
-              "value":"<b>s<\/b>martphone",
-              "matchLevel":"full",
-              "fullyHighlighted":false,
-              "matchedWords":[
-                "s"
-              ]
-            },
-            "anchoring":{
-              "value":"contains",
-              "matchLevel":"none",
-              "matchedWords":[
-
-              ]
-            }
-          },
-          "consequence":{
-            "params":{
-              "filters":{
-                "value":"category = 1",
-                "matchLevel":"none",
-                "matchedWords":[
-
-                ]
-              }
-            }
-          }
-        }
-      }
-    ],
-    "nbHits":1,
-    "page":0,
-    "nbPages":1
-  };
-};
-
-var hitExample = {
-  "name":"title one","alternative_titles":["alternative title 1"], "image":"https://image.tmdb.org/t/p/w154/eVP2IJCWmvb6lZRlyFFcFavBKvU.jpg","score":7.448484848484849,"rating":4,"actors":[],"actor_facets":[],"genre":["Crime"],"objectID":"439585470",
-  "_highlightResult": {
-    "name": {
-      "value": "Dear <em>Z</em>achary: A Letter to a Son About His Father","matchLevel":"full","fullyHighlighted":false,"matchedWords":["z"]
-    },
-    "year":{
-      "value":"2008","matchLevel":"none","matchedWords":[]
-    }
-  }
 };
 
 /**
@@ -805,7 +545,7 @@ else if(
    * Simplified easy to use API that calls the underlying API.
    */
   Flatdoc.reload = function(options) {
-    var actualOptions = {};
+    var actualOptions = {searchInputId: options.searchInputId, searchHitsId: options.searchHitsId};
     if(options.stylus) {
       actualOptions.stylusFetcher = Flatdoc.docPage(options.stylus);
     }
@@ -1342,6 +1082,107 @@ else if(
     return fn(code);
   };
 
+  Runner.prototype.noResultsMarkup = function(requests) {
+    var query = requests[0].params.query;
+    return '<div class="reload-hits-noresults-list">' +
+      'No results for ' + escapeHtml('"' + query + '"') +
+      '</div>';
+  };
+  Runner.prototype.getHitsDiv = function() {
+    var hits = $('#' + this.searchHitsId)[0].childNodes[0];
+    if(!hits) {
+      hits = document.createElement('div');
+      var hiddenClass = 'reload-hits reload-hits-empty';
+      hits.className = hiddenClass;
+      $('#' + this.searchHitsId)[0].appendChild(hits);
+    }
+    return hits;
+  };
+  Runner.prototype.doSearch = function(requests) {
+    var results = searchDocs(requests);
+    var hits = this.getHitsDiv();
+    var firstItem = null;
+    var lastItem = null;
+    if(results.hits.length) {
+      var hitsListMarkup = document.createElement('div');
+      hitsListMarkup.className = 'reload-hits-list';
+      for(var i = 0; i < results.hits.length; i++) {
+        var category = results.hits[i].category;
+        var textContent = results.hits[i].content;
+        var _highlightResultContentValue = results.hits[i]._highlightResult.content.value;
+        var hitsItem = document.createElement('div');
+        var buttonContents = document.createElement('div');
+        $(hitsItem).on('click', function(i, e) {
+          $('.reload-in-doc-highlight').each(function() {
+            var $el = $(this);
+            $el.removeClass('reload-in-doc-highlight');
+          });
+          var node = results.hits[i]._highlightResult.content.nodeInDOM;
+          node.className += ' reload-in-doc-highlight';
+          node.scrollIntoView({behavior: 'smooth', block: 'center'});
+        }.bind(null, i));
+        hitsItem.tabIndex = 0;
+        hitsItem.className = 'reload-hits-item';
+        buttonContents.className='reload-hits-item-button-contents';
+        buttonContents.innerHTML = _highlightResultContentValue;
+        hitsItem.appendChild(buttonContents);
+        hitsListMarkup.appendChild(hitsItem);
+      }
+      hits.childNodes.length && hits.removeChild(hits.childNodes[0]);
+      hits.appendChild(hitsListMarkup);
+    } else {
+      hits.innerHTML = this.noResultsMarkup(requests);
+    }
+  };
+
+  Runner.prototype.setupSearch = function() {
+    var doc = this;
+    var theInputId = doc.searchInputId;
+    var theSearchHitsId = doc.searchHitsId;
+    var $theInput = $('#' + theInputId);
+    var $theSearchHits = $('#' + theSearchHitsId);
+    if($theInput.length && $theSearchHits.length) {
+      var hits = this.getHitsDiv();
+      // TODO: Sync this 51px with $header-height-1
+      $theSearchHits[0].style.cssText += "position: sticky; top: 51px; z-index: 100;"
+      var theParentForm = $theInput[0].parentNode;
+      theParentForm = theParentForm.tagName.toUpperCase() === 'FORM' ? theParentForm : null;
+      function adjustSearchVisible() {
+        var value = $theInput[0].value.trim();
+        if(value === "") {
+          hits.className = 'reload-hits reload-hits-empty';
+        } else {
+          hits.className = 'reload-hits';
+        }
+      }
+      function runSearchReset(e) {
+        $theInput[0].value = '';
+        adjustSearchVisible();
+      }
+      function runSearchWithValue(e) {
+        var value = $theInput[0].value.trim();
+        adjustSearchVisible();
+        if(value !== "") {
+          var requests = [{params: {query: value}}];
+          doc.doSearch(requests);
+        }
+      }
+      theParentForm && $(theParentForm).on('reset', runSearchReset);
+      $theInput.on('input', runSearchWithValue);
+    } else {
+      if(theInputId || theSearchHitsId) {
+        console.error(
+          'You supplied options searchInputId or searchHitsId but we could not find one of the elements ' +
+          theInputId +
+          '/' +
+          theSearchHitsId
+        );
+      } else {
+        console.error('Neither options searchInputId or searchHitsId were supplied');
+      }
+    }
+  };
+
   /**
    * Loads the Markdown document (via the fetcher), parses it, and applies it
    * to the elements.
@@ -1353,6 +1194,9 @@ else if(
     // If this *is* an already rendered snapshot, then no need to render
     // anything. Just fire off the ready events so that hacky jquery code can
     // perform resizing etc.
+    $(doc.root).on('flatdoc:ready', function(e) {
+      doc.setupSearch();
+    });
     if(window.location.pathname.indexOf('.dev.html') !== (window.location.pathname.length - '.dev.html'.length)) {
       $(doc.root).trigger('flatdoc:style-ready');
       $(doc.root).trigger('flatdoc:ready');
