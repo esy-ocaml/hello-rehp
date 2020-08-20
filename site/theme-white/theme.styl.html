@@ -16,6 +16,10 @@ $vmargin = 16px  // Margin between blocks
 $offwhite = #f8f8f8
 $codebg = #f7fafc
 $hitsbg = white
+$hits-item-bg-cursor = #f0f2f9
+$hits-item-bg-cursor-double = #e2e6f3 
+$hits-item-bg-hover = #f4f5fb
+$hits-item-border-cursor = #e2e5f3
 $codeborder = #eceff3
 $grey = #909090
 $lightgrey = #b0b0b0
@@ -249,8 +253,8 @@ a
       position: absolute
       left: -17px
       top: 7px
-      width: 5px
-      height: 5px
+      width: 4px
+      height: 4px
       border-radius: 4px
       background: white
       border: solid 1px $grey
@@ -557,111 +561,6 @@ pre > code
   .button + em
     color: $grey
 
-// Search results
-// --------------
-
-// Hide scrollbar but still make scrollable
-#hits
-  &::-webkit-scrollbar
-    display: none
-#hits
-  overflow-x:scroll
-  -ms-overflow-style: none  /* IE and Edge */
-  scrollbar-width: none  /* Firefox */
-
-#hits [class^='ais-']
-  line-height: 20px !important
-  font-size:14px !important
-#hits .ais-Hits
-  background-color: #fcfcfc
-#hits
-  line-height: 20px !important
-  font-size:14px !important
-  overflow: auto
-  scrollbar($offwhite)
-
-  /* Bottom: 100% makes it grow upwards */
-  /* Total header height should be 52 = vmargin*2 + line-height(20) */
-  background-color:$hitsbg
-  top: $header-height
-  .ais-Hits
-    color: $txt
-    box-shadow: 0 2px 5px 0px #444444
-  .ais-Hits-list
-    flex-wrap: nowrap
-    flex-direction:column
-    margin:0
-    border-top: none
-    border-left: 1px solid $line
-    border-right: 1px solid $line
-    border-bottom: 1px solid $linedarker
-  .ais-Hits-item
-    border-bottom: none
-    border-top: 1px solid $line
-    border-left: none
-    border-right: none
-    /* By default is: */
-    /* width: calc(25% - 1rem) */
-    width: 100%
-    margin:0
-    box-shadow: none
-    li
-      list-style-type: none
-      position: relative
-      margin-left: 4px
-      &:before
-        content: ''
-        display: block
-        position: absolute
-        left: -17px
-        top: 7px
-        width: 5px
-        height: 5px
-        border-radius: 4px
-        background: transparent
-        border: solid 1px $lightgrey
-
-    table > code, li > code, tr > code, td > code, th > code, p > code
-      font-family: $mono-font
-      font-size: $mono-font-size
-      border: 1px solid $codeborder;
-      background: $codebg
-      border-radius: 2px;
-      padding: 1px 3px
-      background: $codebg
-      border-radius: 2px;
-      border: 1px solid $codeborder
-    pre
-      code
-        font-size: 0.9em
-      font-family: $mono-font
-      background: $offwhite
-      display: block
-      padding: 10px
-      border-radius: 2px
-      overflow-x: scroll
-      &::-webkit-scrollbar
-        display: none
-      -ms-overflow-style: none  /* IE and Edge */
-      scrollbar-width: none  /* Firefox */
-
-    search-highlight
-      color: black;
-      background-color: #ffd40060;
-      border-radius: 2px;
-      padding-top: 1px;
-      padding-bottom: 1px;
-      padding-left: 3px;
-      padding-right: 3px;
-      /* Now remove the padding - but also remove one for the border */
-      /* This is so that when typing the text around it doesn't move */
-      margin-left: -4px;
-      margin-right: -4px;
-      border: 1px solid #d3b00080;
-
-  .ais-Hits.ais-Hits--empty
-    display:none
-    
 // Literate mode
 @media (max-width: 1180px + $rightdockedhitscolumnwidth) /* Big desktop */
   #hits
@@ -1052,7 +951,7 @@ pre > code
   font-size: 20px;
   color: #909090;
 }
-.reload-hits.reload-hits-empty {
+.reload-hits.reload-hits-hidden {
   transition: all 0.18s ease-in-out;
   transform: translateX(450px);
 }
@@ -1079,7 +978,7 @@ pre > code
 }
 .reload-in-doc-highlight {
   background-color: rgba(255,241,168,0.533);
-  transition: background-color 1.5s ease-out 0.3s;
+  transition: background-color 1.5s ease-out 0.1s;
 }
 .reload-hits {
   border-left: 1px solid #e8e8e8;
@@ -1127,7 +1026,7 @@ pre > code
 .reload-hits .reload-hits-item {
   cursor: pointer;
   opacity: 0.9;
-  transition: transform 0.05s ease-out 0s, background-color 0.2s ease-out 0s;
+  transition: transform 0.05s ease-out 0s, background-color 0.1s ease-out 0s;
   border-top: 0.5px solid #f0f0f0;
   padding: 20px;
   border-bottom: none;
@@ -1138,17 +1037,29 @@ pre > code
   box-shadow: none;
 }
 .reload-hits .reload-hits-item:hover {
-  background-color: #f2f4fa;
+  background-color: $hits-item-bg-hover;
 }
-.reload-hits .reload-hits-item:focus {
-  background-color: #f0f2f9;
-}
-.reload-hits .reload-hits-item:hover:focus {
-  background-color: #edeff8;
-}
+
+.reload-hits .reload-hits-item.cursor,
+.reload-hits .reload-hits-item:hover
+  border-top: 0.5px solid $hits-item-border-cursor
+  background-color: $hits-item-bg-cursor
+  
+.reload-hits .reload-hits-item.cursor + .reload-hits-item,
+.reload-hits .reload-hits-item:hover + .reload-hits-item
+  border-top: 0.5px solid $hits-item-border-cursor
+  
+.reload-hits .reload-hits-item.cursor:first-child,
+.reload-hits .reload-hits-item:hover:first-child
+  border-top:none
+  
+.reload-hits .reload-hits-item:active,
+.reload-hits .reload-hits-item.cursor:hover
+  background-color: $hits-item-bg-cursor-double
+
 .reload-hits .reload-hits-item:active .reload-hits-item-button-contents {
   user-select: none;
-  transition: transform 0.2s ease-out 0s;
+  transition: transform 0.1s ease-out 0s;
   transform: scale(0.98);
 }
 .reload-hits .reload-hits-item .reload-hits-item-button-contents {
@@ -1158,19 +1069,27 @@ pre > code
 .reload-hits .reload-hits-item li {
   list-style-type: none;
   position: relative;
-  margin-left: 4px;
+  margin-left: 2px;
 }
+
+.reload-hits .reload-hits-item h1,
+.reload-hits .reload-hits-item h2,
+.reload-hits .reload-hits-item h3,
+.reload-hits .reload-hits-item h4,
+.reload-hits .reload-hits-item h5
+  font-weight:bold
+
 .reload-hits .reload-hits-item li:before {
   content: '';
   display: block;
   position: absolute;
-  left: -17px;
+  left: -11px;
   top: 7px;
-  width: 5px;
-  height: 5px;
-  border-radius: 4px;
+  width: 2px;
+  height: 2px;
+  border-radius: 2px;
   background: transparent;
-  border: solid 1px #b0b0b0;
+  border: solid 1px #ccc;
 }
 .reload-hits .reload-hits-item table > code,
 .reload-hits .reload-hits-item li > code,
@@ -1206,7 +1125,7 @@ pre > code
 }
 .reload-hits .reload-hits-item search-highlight {
   color: #000;
-  background-color: rgba(255,212,0,0.376);
+  background-color: rgba(255,212,0,0.276);
   border-radius: 2px;
   padding-top: 1px;
   padding-bottom: 1px;
@@ -1216,7 +1135,26 @@ pre > code
 /* This is so that when typing the text around it doesn't move */
   margin-left: -4px;
   margin-right: -4px;
-  border: 1px solid rgba(211,176,0,0.502);
+  border: 1px solid rgba(211,176,0,0.402);
+}
+
+.reload-hits .reload-hits-item-button-contents-crumb-row
+  margin-top: 4px;
+  margin-bottom: 4px;
+
+.reload-hits .reload-hits-item-button-contents-crumb-sep
+  color: $txtlight
+  margin-left: 4px
+  margin-right: 4px
+
+.reload-hits .reload-hits-item-button-contents-crumb-row .reload-hits-item-button-contents-crumb-row-first {
+  font-weight:bold
+}
+.reload-hits .reload-hits-item-button-contents-crumb-row .reload-hits-item-button-contents-crumb-row-second {
+  font-weight:bold
+}
+.reload-hits .reload-hits-item-button-contents-crumb-row .reload-hits-item-button-contents-crumb-row-third {
+  font-weight:bold
 }
 
 // ----------------------------------------------------------------------------

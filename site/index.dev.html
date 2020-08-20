@@ -6,17 +6,6 @@
   <meta name="viewport" content="width=device-width">
 
   <title>Reload</title>
-
-  
-  <!-- https://www.algolia.com/doc/guides/building-search-ui/going-further/backend-search/in-depth/backend-instantsearch/js/#introduction -->
-  <!--
-  <script src="https://cdn.jsdelivr.net/npm/algoliasearch@4.0.0/dist/algoliasearch-lite.umd.js" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/instantsearch.js@4.4.0/dist/instantsearch.development.js" crossorigin="anonymous"></script>
-  
-  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/instantsearch.css@7.3.1/themes/algolia.css">
-  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/instantsearch.css@7.3.1/themes/reset.css">
-  -->
-  
   <!-- Reload -->
   <script class="removeFromRenderedPage" src='vendor/highlight.pack.js'></script>
   <script src='vendor/jquery.js'></script>
@@ -46,7 +35,17 @@
         ).value;
       },
       searchInputId: 'the-search-input',
-      searchHitsId: 'the-search-hits'
+      searchHitsId: 'the-search-hits',
+      // Clears out any h1 context
+      searchBreadcrumbContext: function(ctx) {
+        // If there *is* an h2+, don't show h1
+        if(ctx.h2 || ctx.h3 || ctx.h4) {
+          return {...ctx, h1: null};
+        } else {
+          // Else show the h1
+          return ctx;
+        }
+      }
     });
   </script>
 
@@ -67,15 +66,6 @@
     document.body.style="visibility:hidden"
   </script>
   <!-- https://unsplash.com/photos/Z0uzZSM5i4M -->
-  <div class='title-area title-card noselect'>
-    <div class='in'>
-      <div class='headline'>
-        <h6>just</h6>
-        <h1>reload</h1>
-        <img src="./animation.svg" alt="Example" style="max-width:100%;">
-      </div>
-    </div>
-  </div>
 
   <div class='header'>
     <div class='left'>
@@ -96,7 +86,7 @@
         <button type="reset" value="reset">reset</button>
       </form>
       -->
-      <form class="search-form">
+      <form onsubmit="" class="search-form">
         <input id="the-search-input" type="text" name="focus" required class="search-input" placeholder="Enter search term" />
         <button tabindex=1 class="close-icon" type="reset"></button>
         <div class="search-style"></div>
