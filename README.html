@@ -1,11 +1,17 @@
 [ vim: set filetype=Markdown: ]: # (<script src="site/Reload.js"> </script>)
+[//]: # (---)
+[//]: # (something: hey)
+[//]: # (title: me)
+[//]: # (description: "Hi there here is an escaped quote \" inside of quotes")
+[//]: # (---)
 
-Reload
-=======
+# Reload
 
-Reload is the easiest documentation tool. It produces beautiful, fast-loading
-documentation pages and bundles all of your rendered doc markup into a single
-shareable file, along with all of its assets.
+The **easy** documentation tool.
+
+Reload produces beautiful, fast-loading documentation pages and bundles all of
+your rendered doc markup into a single shareable file, along with all of its
+assets.
 
 > Reload is a fork of the excellent
 > [flatdoc](https://github.com/rstacruz/flatdoc)
@@ -45,6 +51,7 @@ specifies which files should be loaded:
 Reload.reload({ doc: "./README.md.html" });
 </script>
 ```
+
 
 ### Docs
 
@@ -99,8 +106,10 @@ Files](#reload-customizing-add-files) section.
 
 ### Markdown Features
 
-In addition to standard markdown, Reload inheirits great features from flatdoc,
-and adds some of its own.
+Reload supports Github Flavored markdown features, but also inheirits some
+additional ones flatdoc. Reload also adds many of its own new features.  The
+"buttons", smartquotes and left/right split features below was inherited from
+flatdoc, and the other features are Reload specific features.
 
 #### Buttons
 
@@ -199,6 +208,51 @@ its left side:
 
 
 
+#### YAML Headers
+
+Reload parses YAML headers and extracts the metadata contained within them.
+YAML headers are way to pass metadata that is _not_ part of standard markdown
+to other parts of the documentation toolchain. YAML headers consist of an unlimited
+number of key/value pairs sandwiched between two `---` appearing at the start of the
+document. It must be the very first thing in the document, after the first Reload
+`<script>` include line.
+
+```markdown
+---
+something: hey)
+title: me)
+description: "Hi there here is an escaped quote \" inside of quotes")
+---
+```
+
+#### Silent YAML Headers
+
+YAML headers are the standard way to convey metadata to various markdown
+documentation toolchains, and Reload will use some of that metadata as well.
+However, one downside to YAML headers is that they are also rendered as a table
+in your document when viewed in Github's markdown viewer.
+Reload supports an alternative ("silent") form of YAML headers embedded in
+markdown comments (markdown comments are of the form `[//]: #
+(comment-content-here)`.
+
+The previous example would be written at the very start of the Reload document
+(after the script include) as follows:
+
+
+```markdown
+[//]: # (---)
+[//]: # (something: hey)
+[//]: # (title: me)
+[//]: # (description: "Hi there here is an escaped quote \" inside of quotes")
+[//]: # (---)
+```
+
+
+This prevents the header metadata from being rendered as a table in Github's viewer,
+but Reload will still extract them just as if they were YAML headers.
+The result is a single Reload doc that serves as a Github viewable markdown page,
+as well as powering a website.
+
 
 ### Optimizing
 You can deploy this repo and serve its files with no build step. But you can
@@ -219,6 +273,148 @@ npm run bundle
 - Save your online docs using the browser's '"Save As"
 - Reload makes sure your page looks exactly the same on anyone's computer,
   including the fonts.
+
+## Search Features
+
+Reload supports offline search of the current document. See the Reload 
+[API](#api) for how to instantiate it with the right information about
+where your search form lives on the page.
+
+### Keyboard Interactions
+
+| Token                                               | Replaced With                                |
+|-----------------------------------------------------|----------------------------------------------|
+| <kbd>/</kbd>                                        | Focus the Search input                       |
+| <kbd>Esc</kbd>                                      | Close search results and blur search input   |
+| <kbd>Ctrl</kbd> + <kbd>c</kbd>                      | Toggle search results open                   |
+| <kbd>Tab</kbd> or <kbd>shift</kbd> + <kbd>Tab</kbd> | When results open, move up down in results   |
+| <kbd>Down</kbd> or <kbd>Up</kbd>                    | When results open, move up / down in results |
+| <kbd>Enter</kbd> or Click                           | Go to currently selected result              |
+
+
+
+## API
+
+The following describe the properties accepted on the `Reload` constructor
+which should be initialized in your main HTML `index.dev.html` or template.
+
+```javascript
+Reload.reload({
+  stylus: stylusConfig,
+  doc: docConfig,
+  highlight: highlightConfig,
+  slugify: slugifyConfig,
+  slugContributions: slugifyConfig,
+  sideNavify: sideNavifyConfig,
+  searchFormId: searchFormId,
+  searchHitsId: searchHitsId,
+});
+```
+
+###### `stylus:`
+The path(s) to stylus configuration(s). May either be a string or an array of
+strings. Each string must be the path to a valid Reload compatible [stylus
+configuration](#styles) (Stylus files with the special script include on the
+first line).
+
+```javascript
+Reload.reload({
+  stylus: './theme-white/theme.styl.html',
+  ...
+});
+```
+
+###### `doc:`
+The path(s) to Reload doc(s). May either be a string or an array of strings.
+Each string must be the path to a valid Reload compatible [doc ](#doc) files
+(markdown files with the special script include on the first line).
+
+```javascript
+Reload.reload({
+  stylus: './theme-white/theme.styl.html',
+  ...
+});
+```
+
+
+###### `slugify:`
+
+Describes which header elements should become slugified (linkable with a
+readable url). The default is shown below.
+```javascript
+{
+  h1: true,
+  h2: true,
+  h3: true,
+  h4: false,
+  h5: false,
+  h6: false,
+}
+
+```
+
+<continueRight/>
+
+If a header level is not slugified, its content can still partake in the slug
+content of other header levels. See [`slugContributions:`](#api-slugcontributions).
+
+###### `slugContributions:`
+
+Describes which header elements should partake in _other_, header slugs.
+For example if `h1` is marked `true`, then `<h2/>`s will have the previous
+`h1` text in their slugs. Consequently, if everything is configured `false`,
+only *that* header's text will be used to create the slug.
+Slugs are always deduped regardless of which headers are slug contributors.
+The first slug of value `name` becomes `#name` and the second becomes `#name-1`
+and so on. Enabling more slug contributions doesn't change the deduping
+behavior, it just makes deduping less necessary.
+The defaults are as follows:
+
+```javascript
+{
+  h1: true,
+  h2: true,
+  h3: true,
+  h4: false,
+  h5: false,
+  h6: false,
+}
+```
+
+<continueRight/>
+
+`slugContributions` can help you avoid breaking existing links to pages.  If
+you never had an `h1` heading, and your existing slug urls did not have any
+component for the `h1` heading, you can later add an `h1` heading without
+breaking existing links by configuring the `slugContributions`'s `h1` field to
+be `false.`
+
+The more headings you allow to partake in slugs, the more fragile your links
+will be. But the fewer headings you allow to partake in slugs, the more
+non-unique slugs you will run into (with a `-1` appended after them).
+
+###### `sidenavify:`
+
+Describes which headings will be added to the side nav. This will also cause
+the `slugify` to be activated for this heading level even if it was set to
+`false` (only slugified headings can be linked to from the side nav).
+The defaults are as follows:
+
+```javascript
+{
+  h1: true,
+  h2: true,
+  h3: true,
+  h4: false,
+  h5: false,
+  h6: false,
+}
+```
+
+**TODO:** Add new options besides `true`/`false` such as `'ifCodeHeading'` to
+allow `h6` code documentation headers to show up in the side nav (for API
+reference style docs).
+
 
 ## Customizing
 
@@ -410,6 +606,9 @@ the way that the `marked` library is being used does not sanitize the output
 before injecting it into the DOM.
 
 > TODO: Improve this.
+
+##### TODO:
+- Allow editing the markdown [inline](https://ionicabizau.github.io/medium-editor-markdown/example/)
 
 ### Acknowledgements
 See [ORIGINS.md](./ORIGINS.md) for links and licenses of various

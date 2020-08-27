@@ -1,4 +1,5 @@
 (function($) {
+
   var $window = $(window);
   var $document = $(document);
 
@@ -61,10 +62,16 @@
          $("[href='#"+cid+"']").addClass('active');
         }
       });
-      $('.menu a').anchorjump();
-      $('#hits').anchorjump();
+      $('.menu a').anchorJumpOnLinkClicked();
+      window.addEventListener('hashchange', function(e) {
+         if (location.hash !== ''){
+           console.log('hash changed');
+           $.anchorjump(location.hash);
+         }
+       });
+
       // Rejump after images have loaded
-      $.anchorjump(window.location.hash, {speed: 0});
+      $.anchorjump(window.location.hash);
       /**
        * If you add a style="visibility:hidden" to your document body, we will clear
        * the style after the styles have been injected. This avoids a flash of
@@ -91,13 +98,6 @@
     });
   });
 
-  /*
-   * Anchor jump links.
-   */
-  $document.on('flatdoc:ready', function() {
-    // $('.menu a').anchorjump();
-  });
-
   $document.on('flatdoc:ready', function() {
     if (typeof mediumZoom !== 'undefined') {
       mediumZoom(document.querySelectorAll('.content img'), {
@@ -118,75 +118,6 @@
   });
 
 
-
-  /*
-   * Title card.
-   */
-  $document.on('flatdoc:style-ready', function() {
-     var $card = $('.title-card');
-     if (!$card.length) return;
-
-     var $header = $('.header');
-     var headerHeight = $header.length ? $header.outerHeight() : 0;
-
-     $window
-       .on('resize.title-card', function() {
-         var windowWidth = $window.width();
-
-         if (windowWidth < 480) {
-           $card.css('height', '');
-         } else {
-           var height = $window.height();
-           $card.css('height', height - headerHeight);
-         }
-       })
-       .trigger('resize.title-card');
-  });
-
-
-  $(document).on('flatdoc:ready', function() {
-    $("#misc, #basic").remove();
-
-    $("pre > code").each(function() {
-      var $code = $(this);
-      var m = $code.text().match(/<body class='([^']*)'/);
-      if (m) {
-        var $q = $("<blockquote><a href='#"+m[1]+"' class='button light'>Toggle</a></blockquote>");
-        $q.find('a').click(function() {
-          var klass = $(this).attr('href').substr(1);
-          $('body').toggleClass(klass);
-          if (klass === 'big-h3') $.anchorjump('#theme-options');
-          if (klass === 'large-brief') $.anchorjump('#flatdoc');
-
-        });
-        $code.after($q);
-      }
-    });
-  });
-
-
-  /*
-   * Sidebar stick.
-   */
-
-  /*
-  $(function() {
-    var $sidebar = $('.menubar');
-    var elTop;
-
-    $window
-      .on('resize.sidestick', function() {
-        $sidebar.removeClass('fixed');
-        elTop = $sidebar.offset().top;
-        $window.trigger('scroll.sidestick');
-      })
-      .on('scroll.sidestick', function() {
-        var scrollY = $window.scrollTop();
-        $sidebar.toggleClass('fixed', (scrollY >= elTop));
-      })
-      .trigger('resize.sidestick');
-  });
-  */
 
 })(jQuery);
 /*! jQuery.scrollagent (c) 2012, Rico Sta. Cruz. MIT License.
@@ -309,11 +240,11 @@
     'for': null,
     'parent': document.body
   };
-
+  
   /**
    * This is currently broken for animation jumps except the left nav.
    */
-  $.fn.anchorjump = function(options) {
+  $.fn.anchorJumpOnLinkClicked = function(options) {
     options = $.extend({}, defaults, options);
 
     if (options['for']) {
@@ -336,14 +267,15 @@
       var href = $a.attr('href');
 
       $.anchorjump(href, options);
+      if (window.history.pushState) {
+        window.history.pushState({ href: href }, "", href);
+      }
     }
   };
 
   // Jump to a given area.
   $.anchorjump = function(href, options) {
     options = $.extend({}, defaults, options);
-
-    var top = 0;
 
     if (href != '#') {
       var $area = $(href);
@@ -354,23 +286,21 @@
       }
       if (!$area.length) { return; }
 
-      // Determine the pixel offset; use the default if not available
-      var offset =
-        $area.attr('data-anchor-offset') ?
-        parseInt($area.attr('data-anchor-offset'), 10) :
-        options.offset;
-
-      // offset().top might be negative because the document is the thing that
-      // overflow-scrolls.
-      top = $area.offset().top + offset;
     }
 
-    $('html, body').animate({ scrollTop: document.body.scrollTop + top }, options.speed);
+    // $('html, body').animate({ scrollTop: document.body.scrollTop + top }, options.speed);
+    
+    $.customScrollIntoView({
+      smooth: false,
+      container: document.documentElement,
+      element: $area[0],
+      mode: 'top',
+      // Keep 52 in sync with headerHeight in style file
+      topMargin: 2 * 52,
+      bottomMargin: 0
+    });
+    $.highlightNode($area[0]);
     $('body').trigger('anchor', href);
 
-    // Add the location hash via pushState.
-    if (window.history.pushState) {
-      window.history.pushState({ href: href }, "", href);
-    }
   };
 })(jQuery);

@@ -7,6 +7,7 @@
 
   <title>Reload</title>
   <!-- Reload -->
+  <script src="https://unpkg.com/compute-scroll-into-view/umd/compute-scroll-into-view.min.js"></script>
   <script class="removeFromRenderedPage" src='vendor/highlight.pack.js'></script>
   <script src='vendor/jquery.js'></script>
   <script src='vendor/medium-zoom.js'></script>
@@ -18,7 +19,6 @@
   <link  href='vendor/highlight-styles/mono-blue.css' rel='stylesheet'>
 
   <!-- fonts -->
-  <link  href='./fonts/PrivateCodingFont.css' rel='stylesheet'>
   <!-- if including a private coding font/word font, remove the non-private one from document after rendering to avoid bundling it -->
   <link href='./fonts/WordFont.css' rel='stylesheet'>
 
@@ -34,18 +34,15 @@
           code
         ).value;
       },
-      searchInputId: 'the-search-input',
-      searchHitsId: 'the-search-hits',
-      // Clears out any h1 context
-      searchBreadcrumbContext: function(ctx) {
-        // If there *is* an h2+, don't show h1
-        if(ctx.h2 || ctx.h3 || ctx.h4) {
-          return {...ctx, h1: null};
-        } else {
-          // Else show the h1
-          return ctx;
-        }
-      }
+      /**
+       * The default headerConfig. Sidenav requires linkifying and therefore
+       * will force linkifying if sideNav is true.
+       */
+      slugify: {h1: true, h2: true, h3: true, h4: false, h5: false, h6: true},
+      sidenavify: {h1: true, h2: true, h3: true, h4: false, h5: false, h6: true},
+      slugContributions: {h1: false, h2: true, h3: true, h4: true, h5: true, h6: true},
+      searchFormId: 'the-search-input',
+      searchHitsId: 'the-search-hits'
     });
   </script>
 
@@ -58,116 +55,55 @@
   <meta content="website" property="og:type">
   <meta content="A rapid project documentation tool" name="description">
   <meta content="A rapid project documentation tool" property="og:description">
-  <meta content="http://ricostacruz.com/flatdoc/support/preview.jpg" property="og:image">
-  <!-- Analytics -->
 </head>
 <body role='flatdoc' class='big-h3 large-brief'>
   <script>
     document.body.style="visibility:hidden"
   </script>
-  <!-- https://unsplash.com/photos/Z0uzZSM5i4M -->
+  <div class="title-header">
+     <div class="title-inner-header title-flex">
+        <h1>RELOAD</h1>
 
-  <div class='header'>
-    <div class='left'>
-      <span style="background-color: #e0e0e0" class="header-icon"></span>
-      <div class="links">
-        <h1><a href='./index.html'>reload</a></h1>
-        <ul class="collapsable">
-          <li><a href="https://github.com/esy/pesy">GitHub</a></li>
-          <li><a href="https://github.com/esy/pesy/issues">Issues</a></li>
-        </ul>
-      </div>
+     </div>
+  </div>
+  <div id='reload-header' class='reload-header'>
+    <div class="fixedHeaderContainer">
+      <ul class="nav">
+        <li class="siteNavGroupActive"><a href="/docs/en/what-and-why" target="_self">Docs</a></li>
+        <li class=""><a href="/en/try" target="_self">Try</a></li>
+        <li class=""><a href="/api/index" target="_self">API</a></li>
+        <li class=""><a href="/docs/en/community" target="_self">Community</a></li>
+        <li class=""><a href="/blog/" target="_self">Blog</a></li>
+        <span>
+          <li>
+            <a class="languages-menu" href="#">English</a>
+            <div class="dropdown hide">
+              <ul class="dropdown-items">
+                <li><a href="/docs/pt-BR/editor-plugins">Português (Brasil)</a></li>
+                <li><a href="/docs/pt-BR/editor-plugins">Português (Brasil)</a></li>
+              </ul>
+            </div>
+          </li>
+          <script>
+             const languagesDropDown = document.querySelectorAll(".dropdown")[0];
+             document.querySelectorAll(".languages-menu")[0].addEventListener("click", function(event) {
+               event.preventDefault();
+               languagesDropDown.className = languagesDropDown.className.indexOf("hide") === -1 ?  "dropdown hide" : "dropdown visible";
+             });
+          </script>
+        </span>
+      </ul>
+      <form id="the-search-input"></form>
     </div>
-    <div class='right'>
-      <!-- <div id="searchbox"></div> -->
-      <!--
-      <form>
-        <input class="ais-SearchBox-input" type="search" />
-        <button type="reset" value="reset">reset</button>
-      </form>
-      -->
-      <form onsubmit="" class="search-form">
-        <input id="the-search-input" type="text" name="focus" required class="search-input" placeholder="Enter search term" />
-        <button tabindex=1 class="close-icon" type="reset"></button>
-        <div class="search-style"></div>
-      </form>
-
-    </div>
-    <div style="display:none" id="pagination"></div>
   </div>
   <div id="the-search-hits"></div>
   <div class='content-root'>
     <div class='menubar'>
-      <div class='section'>
-        <a class='big button' href='' target='_blank'>Install</a>
-      </div>
       <div class='menu section' role='flatdoc-menu'></div>
     </div>
     <div role='flatdoc-content' class='content'></div>
   </div>
  <script>
-    
-   /*
-    const customSearchClient = {
-      search(requests) {
-        return {
-          then: (cb) => {
-            console.log('results');
-            cb({
-              results: [
-                searchDocs(requests)
-              ]
-            });
-            return {
-              catch: (cb) => {
-
-              }
-            }
-          }
-        };
-      }
-    };
-    const search = instantsearch({
-      indexName: 'demo_ecommerce',
-      searchClient: customSearchClient,
-    });
-
-    search.addWidgets([
-      instantsearch.widgets.pagination({
-        container: '#pagination',
-      }),
-      instantsearch.widgets.searchBox({
-        showSubmit: false,
-        placeholder: "Search Docs",
-        container: '#searchbox',
-        searchAsYouType: true,
-        templates: {
-          submit: '<div>SUBMIT</div>'
-        },
-        queryHook(query, search) {
-          search(query);
-        },
-      }),
-
-      instantsearch.widgets.hits({
-        escapeHTML: false,
-        container: '#hits',
-        templates: {
-          item(hit) {
-            return `
-              <div class="hit-content">${hit._highlightResult.content.value}</div>
-            </div>
-            `;
-          },
-        },
-
-      })
-    ]);
-
-    search.start();
-    */
-
-        
   </script> 
 </body>
 

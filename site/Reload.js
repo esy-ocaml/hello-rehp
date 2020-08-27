@@ -4,8 +4,137 @@
  * @license MIT
  */
 
+// Keep this in sync with $header-height in style.
+var headerHeight = 52;
+
+/**
+ * The default searchCrumbContext function. Clears out any h1 context if there
+ * is an h2. TODO: only clear out h1 if there is an h2 and there is only *one*
+ * h1.
+ */
+var defaultSearchBreadcrumbContext = function(ctx) {
+  // If there *is* an h2+, don't show h1
+  if(ctx.h2 || ctx.h3 || ctx.h4) {
+    return {...ctx, h1: null};
+  } else {
+    // Else show the h1
+    return ctx;
+  }
+};
+
+var defaultSlugifyConfig = {
+  shorter: false,
+  h1: true,
+  h2: true,
+  h3: true,
+  h4: true,
+  h5: false,
+  h6: false
+};
+
+var defaultSidenavifyConfig = {
+  h1: true,
+  h2: true,
+  h3: true,
+  h4: false,
+  h5: false,
+  h6: false
+};
+
+var defaultSlugContributions = {
+  h1: true,
+  h2: true,
+  h3: true,
+  h4: true,
+  h5: true,
+  h6: true
+};
+
+function parseYamlHeader(markdown) {
+  if(markdown.indexOf('---\n') === 0) {
+    var withoutFirstDashes = markdown.substr(4);
+    var nextDashesIndex = withoutFirstDashes.indexOf('\n---\n');
+    if(nextDashesIndex !== -1) {
+      var potentialYamlContent = withoutFirstDashes.substr(0, nextDashesIndex);
+      var lines = potentialYamlContent.split('\n');
+      var props = {};
+      for(var i = 0; i < lines.length; i++) {
+        var colonIndex = lines[i].indexOf(':');
+        if(colonIndex === -1) {
+          return {markdown: markdown, headerProps: null};
+        } else {
+          var field = lines[i].substr(0, colonIndex);
+          // Todo: escape strings
+          var content = lines[i].substr(colonIndex+1).trim();
+          if(content[0] === '"' && content[content.length -1 ] === '"') {
+            var strContent = content.substr(1, content.length -2);
+            content = content.replace(new RegExp('\\\\"', 'g'), '"');
+          }
+          props[field] = content;
+        }
+      }
+      return {
+        markdown: withoutFirstDashes.substr(nextDashesIndex + 4),
+        headerProps: props
+      };
+    } else {
+      return {markdown: markdown, headerProps: null};
+    }
+  } else {
+    return {markdown: markdown, headerProps: null};
+  }
+}
+
+/**
+ * Strips out a special case of markdown "comments" which is supported in all
+ * markdown parsers, will not be rendered in Github previews, but can be used
+ * to convey yaml header information.
+ *
+ * Include this in your doc to have Reload interpret the yaml headers without
+ * it appearing in the Github preview. This allows using one source of truth
+ * markdown file for Github READMEs as well as using to generate your site
+ * (when you don't want metadata showing up in your Github previews).
+ *
+ *     [//]: # (---)
+ *     [//]: # (something: hey)
+ *     [//]: # (title: me)
+ *     [//]: # (description: "Hi there here is an escaped quote \" inside of quotes")
+ *     [//]: # (---)
+ */
+function normalizeYamlMarkdownComments(markdown) {
+  if(markdown.indexOf('[//]: # (---)\n') === 0) {
+    var withoutFirstDashes = markdown.substr(14);
+    var nextDashesIndex = withoutFirstDashes.indexOf('\n[//]: # (---)\n');
+    if(nextDashesIndex !== -1) {
+      var potentialYamlContent = withoutFirstDashes.substr(0, nextDashesIndex);
+      var lines = potentialYamlContent.split('\n');
+      var yamlLines = ['---'];
+      for(var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        var commentStartIndex = line.indexOf('[//]: # (');
+        if(commentStartIndex !== 0 || line[line.length - 1] !== ')') {
+          return markdown;
+        } else {
+          var commentContent = line.substr(9, line.length - 9 - 1); /*Minus one to trim last paren*/
+          yamlLines.push(commentContent);
+        }
+      }
+      yamlLines.push('---');
+      return yamlLines.join('\n') + withoutFirstDashes.substr(nextDashesIndex + 15);
+    } else {
+      return markdown;
+    }
+  } else {
+    return markdown;
+  }
+}
 
 var emptyHTML = "";
+
+/**
+ * Scrolling into view:
+ * https://www.bram.us/2020/03/01/prevent-content-from-being-hidden-underneath-a-fixed-header-by-using-scroll-margin-top/
+ */
 
 function escapePlatformStringLoop(html, lastIndex, index, s, len) {
   var html__0 = html;
@@ -105,6 +234,7 @@ function escapeHtml(s) {
 
 var isSearchable = function(node) {
   return (
+    node.tagName === 'TR' || node.tagName === 'tr' ||
     node.tagName === 'H1' || node.tagName === 'h1' ||
     node.tagName === 'H2' || node.tagName === 'h2' ||
     node.tagName === 'H3' || node.tagName === 'h3' ||
@@ -156,8 +286,8 @@ function escapeRegExpSplitString(string) {
   return string.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&');
 }
 
-function splitStringCaseInsensitiveImpl(regex, str, find) {
-  return str.split(regex);
+function splitStringCaseInsensitiveImpl(regexes, str, find) {
+  return str.split(regexes.caseInsensitive.anywhere);
 }
 function splitStringCaseInsensitive(str, find) {
   return str.split(new RegExp('(' + escapeRegExpSplitString(find) + ')', 'gi'));
@@ -234,26 +364,85 @@ var traverseDOMInsideImpl = function traverseDOMInsideImpl(context, searchables,
   return searchables;
 }
 
-var filterSearchablesLowerCaseImpl = function(searchRegex, text, searchablesArray) {
+var filterSearchablesLowerCaseImpl = function(doc, searchRegex, text, searchablesArray) {
   var results = [];
-  for(var i = 0; i < searchablesArray.length; i++) {
+  var smartCaseWordBoundaryResults = [];
+  var smartCaseAnywhereNotWordBoundaryResults = [];
+  var caseInsensitiveWordBoundaryResults = [];
+  var caseInsensitiveAnywhereNotWordBoundaryResults = [];
+  var searchablesLen = searchablesArray.length;
+  // On the first keystroke, it will return far too many results, almost all of
+  // them useless since it matches anything with that character. In that case, limit to
+  // 20 results. Then on the next keystroke allow more.
+  var maxResultsLen = text.length === 1 ? Math.min(searchablesLen, 20) : searchablesLen;
+  for(var i = 0; i < searchablesLen && results.length < maxResultsLen; i++) {
     var node = searchablesArray[i].node;
     var context = searchablesArray[i].context;
     var innerText = node.innerText;
-    if(searchRegex.test(innerText)) {
+    var test = findBestMatch(innerText, searchRegex);
+    var resultsToPush =
+      test === -1 ? null :
+      test & (SMARTCASE | WORDBOUNDARY) ? smartCaseWordBoundaryResults :
+      test & (SMARTCASE) ? smartCaseAnywhereNotWordBoundaryResults :
+      test & (WORDBOUNDARY) ? caseInsensitiveAnywhereNotWordBoundaryResults :
+      caseInsensitiveAnywhereNotWordBoundaryResults;
+    if(resultsToPush !== null) {
       // TODO: Show multiple matches per searchable.
-      results.push({
+      resultsToPush.push({
         searchable: searchablesArray[i],
-        highlightedInnerText: trustedTraverseAndHighlight(searchRegex, text, node)
+        highlightedInnerText: trustedTraverseAndHighlight(searchRegex, text, node),
+        contextCrumb: doc.contextCrumb(searchablesArray[i].context)
       })
     }
   }
-  return results;
+  return smartCaseWordBoundaryResults.concat(
+    smartCaseAnywhereNotWordBoundaryResults
+  ).concat(
+    caseInsensitiveWordBoundaryResults)
+  .concat(
+    caseInsensitiveAnywhereNotWordBoundaryResults
+  )
 };
 
-var filterSearchables = function(txt, searchablesArray) {
-  var searchRegex = new RegExp('(' + escapeRegExpSplitString(txt) + ')', 'gi');
-  return filterSearchablesLowerCaseImpl(searchRegex, txt, searchablesArray);
+var SMARTCASE = 0b10;
+var WORDBOUNDARY = 0b01;
+
+var regexesFor = function(str) {
+  var hasUpper = str.toLowerCase() !== str;
+  return {
+    // TODO: Add checks that remove symbols like hyphen, dot, parens
+    smartCase: {
+      // Priority 1
+      wordBoundary: !hasUpper ? null : new RegExp('\\b(' + escapeRegExpSplitString(str) + ')', 'g' + (hasUpper ? '' : 'i')),
+      // Priority 2
+      anywhere:  !hasUpper ? null : new RegExp('(' + escapeRegExpSplitString(str) + ')', 'g' + (hasUpper ? '' : 'i'))
+    },
+    caseInsensitive: {
+      // Priority 3
+      wordBoundary: new RegExp('\\b(' + escapeRegExpSplitString(str) + ')', 'gi'),
+      // Priority 4
+      anywhere: new RegExp('(' + escapeRegExpSplitString(str) + ')', 'gi')
+    }
+  }
+};
+
+var findBestMatch = function(stringToTest, regexes) {
+  if(regexes.smartCase.wordBoundary && regexes.smartCase.wordBoundary.test(stringToTest)) {
+    return SMARTCASE | WORDBOUNDARY;
+  } else if(regexes.smartCase.anywhere && regexes.smartCase.anywhere.test(stringToTest)) {
+    return SMARTCASE;
+  } else if(regexes.caseInsensitive.wordBoundary.test(stringToTest)) {
+    return WORDBOUNDARY;
+  } else if (regexes.caseInsensitive.anywhere.test(stringToTest)) {
+    return 0
+  } else {
+    return -1;
+  }
+};
+
+var filterSearchables = function(doc, txt, searchablesArray) {
+  var searchRegex = regexesFor(txt);new RegExp('(' + escapeRegExpSplitString(txt) + ')', 'gi');
+  return filterSearchablesLowerCaseImpl(doc, searchRegex, txt, searchablesArray);
 };
 
 var matchedSearchableToHit = function(matchedSearchable) {
@@ -289,15 +478,15 @@ var traverseDOMInside = function(node, func) {
 };
 
 var searchables = null;
-var searchDocs = (txt) => {
+var searchDocs = (doc, txt) => {
   var hits = [];
   if(txt == null || txt.trim() === "") {
-    hits = [] 
+    hits = [];
   } else {
     if(true || searchables === null) {
       searchables = traverseDOMInside( document.querySelector('.content'), () => {});
-    } 
-    var filteredSearchables = filterSearchables(txt.trim(), searchables);
+    }
+    var filteredSearchables = filterSearchables(doc, txt.trim(), searchables);
     hits = filteredSearchables.map(matchedSearchableToHit);
   }
   // https://www.algolia.com/doc/api-reference/api-methods/search-rules/#json-format
@@ -489,6 +678,44 @@ else if(
 (function($) {
   var exports = this;
 
+  $.highlightNode = function(node) {
+    $('.reload-in-doc-highlight').each(function() {
+      var $el = $(this);
+      $el.removeClass('reload-in-doc-highlight');
+    });
+    $(node).addClass('reload-in-doc-highlight');
+  };
+
+
+  // https://stackoverflow.com/a/8342709
+  $.customScrollIntoView = function(props) {
+    var smooth = props.smooth || false;
+    var container = props.container;
+    var element = props.element;
+    // closest-if-needed | top | bottom
+    var mode = props.mode || 'closest-if-needed';
+    var topMargin = props.topMargin || 0;
+    var bottomMargin = props.bottomMargin || 0;
+    var containerRect = container.getBoundingClientRect();
+    var elementRect = element.getBoundingClientRect();
+    var containerOffset = $(container).offset();
+    var elementOffset = $(element).offset();
+    if(mode !== 'top' && mode !== 'closest-if-needed' && mode !== 'bottom') {
+      console.error('Invalid mode to scrollIntoView', mode);
+    }
+    var elementOffsetInContainer = elementOffset.top - containerOffset.top +
+      // Relative to the document element does not need to account for document scrollTop
+      (container === document.documentElement ? 0 : container.scrollTop);
+    if(mode === 'bottom' || mode === 'closest-if-needed' && elementOffsetInContainer + elementRect.height > container.scrollTop + containerRect.height - bottomMargin) {
+      var newTop = elementOffsetInContainer - containerRect.height + elementRect.height + bottomMargin;
+      container.scrollTo({left:0, top: newTop, behavior:smooth ? 'smooth' : 'auto'});
+    } else if (mode === 'top' || mode === 'closest-if-needed' && elementOffsetInContainer < container.scrollTop) {
+      var newTop = elementOffsetInContainer - topMargin;
+      container.scrollTo({left:0, top: newTop, behavior: smooth ? 'smooth' : 'auto'});
+    }
+  }
+
+
   var marked;
 
   /**
@@ -522,15 +749,18 @@ else if(
   Flatdoc.run = function(options) {
     $(function() { (new Flatdoc.runner(options)).run(); });
   };
-  
+
   /**
    * Simplified easy to use API that calls the underlying API.
    */
   Flatdoc.reload = function(options) {
     var actualOptions = {
-      searchInputId: options.searchInputId,
+      searchFormId: options.searchFormId,
       searchHitsId: options.searchHitsId,
-      searchBreadcrumbContext: options.searchBreadcrumbContext
+      searchBreadcrumbContext: options.searchBreadcrumbContext,
+      slugify: options.slugify || defaultSlugifyConfig,
+      slugContributions: options.slugContributions || defaultSlugContributions,
+      sidenavify: options.sidenavify || defaultSidenavifyConfig
     };
     if(options.stylus) {
       actualOptions.stylusFetcher = Flatdoc.docPage(options.stylus);
@@ -785,7 +1015,7 @@ else if(
    * Parses a given Markdown document.
    * See `Parser` for more info.
    */
-  Parser.parse = function(source, highlight) {
+  Parser.parse = function(doc, source, highlight) {
     marked = exports.marked;
 
     Parser.setMarkedOptions(highlight);
@@ -795,8 +1025,8 @@ else if(
     var title = h1.text();
 
     // Mangle content
-    Transformer.mangle(html);
-    var menu = Transformer.getMenu(html);
+    Transformer.mangle(doc, html);
+    var menu = Transformer.getMenu(doc, html);
 
     return { title: title, content: html, menu: menu };
   };
@@ -832,8 +1062,8 @@ else if(
    *
    * > See: [Transformer](#transformer)
    */
-  Transformer.mangle = function($content) {
-    this.addIDs($content);
+  Transformer.mangle = function(doc, $content) {
+    this.addIDs(doc, $content);
     this.buttonize($content);
     this.smartquotes($content);
   };
@@ -841,18 +1071,39 @@ else if(
   /**
    * Adds IDs to headings.
    */
-
-  Transformer.addIDs = function($content) {
-    var slugs = ['', '', ''];
-    $content.find('h1, h2, h3').each(function() {
-      var $el = $(this);
-      var num = parseInt(this.nodeName[1]);
-      var text = $el.text();
-      var slug = Flatdoc.slugify(text);
-      if (num > 1) slug = slugs[num - 2] + '-' + slug;
-      slugs.length = num - 1;
-      slugs = slugs.concat([slug, slug]);
-      $el.attr('id', slug);
+  Transformer.addIDs = function(doc, $content) {
+    var seenSlugs = {};
+    var context = ['', '', '', '', '', ''];
+    // Requesting side-nav requires linkifying
+    var queryStr = 'h1, h2, h3, h4, h5, h6';
+    $content.find(queryStr).each(function() {
+      var el = this;
+      var lvl = el.tagName === 'H1' || el.tagName === 'h1' ? 1 :
+        el.tagName === 'H2' || el.tagName === 'h2' ? 2 :
+        el.tagName === 'H3' || el.tagName === 'h3' ? 3 :
+        el.tagName === 'H4' || el.tagName === 'h4' ? 4 :
+        el.tagName === 'H5' || el.tagName === 'h5' ? 5 :
+        el.tagName === 'H6' || el.tagName === 'h6' ? 6 : 0;
+      var $el = $(el);
+      var segCandidate = Flatdoc.slugify($el.text());
+      var slugCandidate =
+        context.slice(0, lvl - 1).filter(function(s){return s.length !==0;}).join('-') + '-' + segCandidate;
+      if(slugCandidate in seenSlugs) {
+        var seg = segCandidate + '-' + (seenSlugs[slugCandidate] + 1);
+        seenSlugs[slugCandidate] = seenSlugs[slugCandidate] + 1;
+      } else {
+        var seg = segCandidate;
+        seenSlugs[slugCandidate] = 0;
+      }
+      var slug =
+        context.slice(0, lvl - 1).filter(function(s){return s.length !==0;}).join('-') + '-' + seg;
+      if(doc.slugContributions['h' + lvl]) {
+        context[lvl - 1] = seg;
+      }
+      context.length = lvl;
+      if(doc.slugify['h' + lvl] || doc.sidenavify['h' + lvl]) {
+        $el.attr('id', context.filter(function(s){return s.length !==0;}).join('-'));
+      }
     });
   };
 
@@ -868,7 +1119,7 @@ else if(
    *         items: [...]}, ...]}
    */
 
-  Transformer.getMenu = function($content) {
+  Transformer.getMenu = function(doc, $content) {
     var root = {items: [], id: '', level: 0};
     var cache = [root];
 
@@ -884,13 +1135,36 @@ else if(
       return obj;
     }
 
-    $content.find('h1, h2, h3').each(function() {
+    var query = [];
+    if(doc.sidenavify.h1) {
+      query.push('h1');
+    }
+    if(doc.sidenavify.h2) {
+      query.push('h2');
+    }
+    if(doc.sidenavify.h3) {
+      query.push('h3');
+    }
+    if(doc.sidenavify.h4) {
+      query.push('h4');
+    }
+    if(doc.sidenavify.h5) {
+      query.push('h5');
+    }
+    if(doc.sidenavify.h6) {
+      query.push('h6');
+    }
+    $content.find(query.join(',')).each(function() {
       var $el = $(this);
       var level = +(this.nodeName.substr(1));
 
       var parent = mkdir_p(level-1);
-
-      var obj = { section: $el.text(), items: [], level: level, id: $el.attr('id') };
+      var text = $el.text();
+      var el = $el[0];
+      if(el.childNodes.length === 1 && el.childNodes[0].tagName === 'code' || el.childNodes[0].tagName === 'CODE') {
+        text = '<code>' + text + '</code>';
+      }
+      var obj = { section: text, items: [], level: level, id: $el.attr('id') };
       parent.items.push(obj);
       cache[level] = obj;
     });
@@ -1001,6 +1275,10 @@ else if(
           .attr('href', '#' + node.id)
           .addClass('level-' + node.level)
           .appendTo($li);
+        $a.on('click', function() {
+          var foundNode = $('#' + node.id);
+          foundNode && $.highlightNode(foundNode);
+        });
       }
 
       if (node.items.length > 0) {
@@ -1055,7 +1333,16 @@ else if(
         // -1 means explicitly requested non cursor.
         // null means nothing explicitly requested
         indexInResults: null
-      }
+      },
+      // Used to detect when a click on a search result should refocus
+      // the input or not.
+      lastInputBlurTime: 0
+    }
+    this.nodes = {
+      theSearchInput: null,
+      theSearchHits: null,
+      theSearchForm: null,
+      theHitsScrollContainer: null
     }
     $.extend(this, options);
   };
@@ -1086,8 +1373,8 @@ else if(
     d.innerText = 'No results for "' + txt + '"';
     return d;
   };
-  Runner.prototype.getHitsInnerContainer = function() {
-    return $('#' + this.searchHitsId)[0].childNodes[0];
+  Runner.prototype.getHitsScrollContainer = function() {
+    return this.nodes.theHitsScrollContainer;
   };
   Runner.prototype.effectiveCursorPosition = function() {
     return this.searchState.userRequestedCursor.indexInResults === null
@@ -1096,29 +1383,29 @@ else if(
   }
   Runner.prototype.updateSearchResultsList = function(requests, results) {
     var doc = this;
-    var hitsInnerContainer = this.getHitsInnerContainer();
+    var hitsScrollContainer = this.getHitsScrollContainer();
     var firstItem = null;
     var lastItem = null;
     var effectiveCursorPosition = this.effectiveCursorPosition();
     if(!results.length) {
-      var len = hitsInnerContainer.childNodes.length;
+      var len = hitsScrollContainer.childNodes.length;
       for(var i = 0; i < len; i++) {
-        hitsInnerContainer.removeChild(hitsInnerContainer.childNodes[i]);
+        hitsScrollContainer.removeChild(hitsScrollContainer.childNodes[i]);
       }
-      hitsInnerContainer.appendChild(this.noResultsNode(requests));
+      hitsScrollContainer.appendChild(this.noResultsNode(requests));
     } else {
       var existingHitsList;
       var hitsList;
-      if(hitsInnerContainer.childNodes[0] && hitsInnerContainer.childNodes[0].className === 'reload-hits-noresults-list') {
+      if(hitsScrollContainer.childNodes[0] && hitsScrollContainer.childNodes[0].className === 'reload-hits-noresults-list') {
         existingHitsList = null;
-        hitsInnerContainer.removeChild(hitsInnerContainer.childNodes[0]);
+        hitsScrollContainer.removeChild(hitsScrollContainer.childNodes[0]);
       } else {
-        existingHitsList = hitsInnerContainer.childNodes[0];
+        existingHitsList = hitsScrollContainer.childNodes[0];
       }
       if(!existingHitsList) {
         hitsList = document.createElement('div');
         hitsList.className = 'reload-hits-list';
-        hitsInnerContainer.appendChild(hitsList);
+        hitsScrollContainer.appendChild(hitsList);
       } else {
         hitsList = existingHitsList;
       }
@@ -1130,7 +1417,9 @@ else if(
         var category = results[i].category;
         var textContent = results[i].content;
         var _highlightResultContentValue = results[i].matchedSearchable.highlightedInnerText;
+        var contextCrumb = results[i].matchedSearchable.contextCrumb;
         var hitsItem;
+        var cursor = null;
         // Reuse dom nodes to avoid flickering of css classes/animation.
         if(existingHitsList && existingHitsList.childNodes[i]) {
           hitsItem =  existingHitsList.childNodes[i];
@@ -1143,6 +1432,7 @@ else if(
           hitsList.appendChild(hitsItem);
         }
         if(effectiveCursorPosition === i) {
+          cursor = $(hitsItem)[0];
           $(hitsItem).addClass('cursor');
         } else {
           $(hitsItem).removeClass('cursor');
@@ -1150,28 +1440,45 @@ else if(
         $(hitsItem).on('click', function(i, e) {
           doc.searchState.userRequestedCursor.indexInResults = i;
           doc.updateSearchResultsList(requests, results);
-          $('.reload-in-doc-highlight').each(function() {
-            var $el = $(this);
-            $el.removeClass('reload-in-doc-highlight');
-          });
           var node = results[i].matchedSearchable.searchable.node;
-          $(node).addClass('reload-in-doc-highlight');
-          node.scrollIntoView({behavior: 'smooth', block: 'center'});
-          doc.focus
-          doc.focusInputWhenDoneScrolling();
+          $.highlightNode(node);
+          $.customScrollIntoView({
+            smooth: true,
+            container: document.documentElement,
+            element: node,
+            mode: 'top',
+            topMargin: 2 * headerHeight,
+            bottomMargin: 0
+          });
+          // Only want to refocus the input after scrolling if it was already
+          // focused. Otherwise, it could just be open and they clicked on an
+          // item.  Don't want to focus the input in that case (ruins ability
+          // to keyboard scroll).
+          if(Date.now() - doc.searchState.lastInputBlurTime < 500) {
+            doc.focusInputWhenDoneScrolling();
+          }
         }.bind(null, i));
         var buttonContents = document.createElement('div');
         buttonContents.className='reload-hits-item-button-contents';
-        var crumb = doc.contextCrumb(results[i].matchedSearchable.searchable.context);
         buttonContents.innerHTML = _highlightResultContentValue;
-        crumb && buttonContents.insertBefore(crumb, buttonContents.firstChild);
+        contextCrumb && buttonContents.insertBefore(contextCrumb, buttonContents.firstChild);
         hitsItem.appendChild(buttonContents);
+        if(cursor) {
+          $.customScrollIntoView({
+            smooth: true,
+            container: hitsScrollContainer,
+            element: cursor,
+            mode: 'closest-if-needed',
+            topMargin: 10,
+            bottomMargin: 10
+          });
+        }
       }
     }
   };
   Runner.prototype.focusInputWhenDoneScrolling = function() {
+    console.log('focusing input when done scrolling');
     var doc = this;
-    var theInputId = doc.searchInputId;
     if(!doc.searchState.waitingToFocusAfterScrollDone) {
       doc.searchState.waitingToFocusAfterScrollDone = true;
       var scrollTimeout;
@@ -1182,74 +1489,71 @@ else if(
         // Maybe they just started scrolling themselves.
         if(now - start < 4000) {
           scrollTimeout = setTimeout(function() {
-            var $theInput = $('#' + theInputId);
             if(!doc.searchState.userRequestedClose) {
-              $theInput.focus();
+              console.log('trying the focus');
+              doc.nodes.theSearchInput.focus();
             }
             doc.searchState.waitingToFocusAfterScrollDone = false;
-          }, 100);
+          }, 200);
         } else {
           doc.searchState.waitingToFocusAfterScrollDone = false;
         }
       });
     }
   };
-  Runner.prototype.contextCrumb = function(context) {
-    var context = this.searchBreadcrumbContext ? this.searchBreadcrumbContext(context) : context;
-    var appended = false;
-    if(context.h1 || context.h2 || context.h3) {
-      var row = document.createElement('div');
-      function appendChevron() {
+  Runner.prototype._appendContextCrumb = function(row, context, level) {
+    if(context[level]) {
+      if(!row) {
+        row = document.createElement('div');
+        row.className = 'reload-hits-item-button-contents-crumb-row';
+      } else {
         var chevron = document.createElement('span');
         chevron.className = 'reload-hits-item-button-contents-crumb-sep';
         chevron.innerText = '›';
         row.appendChild(chevron);
       }
-      row.className = 'reload-hits-item-button-contents-crumb-row';
-      if(context.h1) {
-        var seg = document.createElement('span');
-        seg.className = 'reload-hits-item-button-contents-crumb-row-first';
-        seg.innerHTML = context.h1.innerHTML;
-        row.appendChild(seg);
-        appended = true;
-      }
-      if(context.h2) {
-        appended && appendChevron();
-        var seg = document.createElement('span');
-        seg.className = 'reload-hits-item-button-contents-crumb-row-second';
-        seg.innerHTML = context.h2.innerHTML;
-        row.appendChild(seg);
-        appended = true;
-      }
-      if(context.h3) {
-        appended && appendChevron();
-        var seg = document.createElement('span');
-        seg.className = 'reload-hits-item-button-contents-crumb-row-third';
-        seg.innerHTML = context.h3.innerHTML;
-        row.appendChild(seg);
-        appended = true;
-      }
-      return row;
-    } else {
-      return null;
+      var seg = document.createElement('span');
+      seg.className = 'reload-hits-item-button-contents-crumb-row-first';
+      seg.innerHTML = context[level].innerHTML;
+      row.appendChild(seg);
     }
+    return row;
+  }
+  Runner.prototype.contextCrumb = function(context) {
+    var searchBreadcrumbContext =
+      this.searchBreadcrumbContext ? this.searchBreadcrumbContext :
+      defaultSearchBreadcrumbContext;
+    var context = searchBreadcrumbContext(context);
+    var row = this._appendContextCrumb(null, context, 'h1');
+    row = this._appendContextCrumb(row, context, 'h2');
+    row = this._appendContextCrumb(row, context, 'h3');
+    row = this._appendContextCrumb(row, context, 'h4');
+    row = this._appendContextCrumb(row, context, 'h5');
+    row = this._appendContextCrumb(row, context, 'h6');
+    return row;
   };
-  Runner.prototype.setupHitsInnerContainer = function() {
+  Runner.prototype.setupHitsScrollContainer = function() {
     var theSearchHitsId = this.searchHitsId;
-    var $theSearchHits = $('#' + theSearchHitsId);
-    var hitsInnerContainer = $theSearchHits[0].childNodes[0];
-    // After this then this.getHitsInnerContainer() will work:
-    if(!hitsInnerContainer) {
-      hitsInnerContainer = document.createElement('div');
-      var hiddenClass = 'reload-hits reload-hits-hidden';
-      hitsInnerContainer.className = hiddenClass;
-      $theSearchHits[0].appendChild(hitsInnerContainer);
+    var theSearchHits = document.getElementById(theSearchHitsId);
+    var hitsScrollContainer = theSearchHits.childNodes[0];
+    // After this then this.getHitsScrollContainer() will work:
+    if(theSearchHits && !hitsScrollContainer) {
+      hitsScrollContainer = document.createElement('div');
+      var hiddenClass = 'reload-hits-scroll reload-hits-scroll-hidden';
+      hitsScrollContainer.className = hiddenClass;
+      theSearchHits.appendChild(hitsScrollContainer);
+      this.nodes.theSearchHits = theSearchHits;
+      this.nodes.theHitsScrollContainer = hitsScrollContainer;
+    } else if(theSearchHitsId) {
+      console.error(
+        'You supplied options searchHitsId but we could not find one of the elements ' + theSearchHitsId
+      );
     }
   };
 
   Runner.prototype.getItemForCursor = function(i) {
-    var hitsInnerContainer = this.getHitsInnerContainer();
-    var maybeHitsList = hitsInnerContainer.childNodes[0];
+    var hitsScrollContainer = this.getHitsScrollContainer();
+    var maybeHitsList = hitsScrollContainer.childNodes[0];
     return maybeHitsList.className.indexOf('reload-hits-list') === -1 ? null :
       maybeHitsList.childNodes[i];
   }
@@ -1261,146 +1565,223 @@ else if(
       return true;
     }
   };
+  Runner.prototype.getFocusedPlaceholder = function(searchForm) {
+    var defaultTxt = "Search (Esc close)";
+    return searchForm ?
+      (searchForm.dataset.focusedPlaceholder || defaultTxt) :
+      defaultTxt;
+  };
+  Runner.prototype.getPlaceholder = function(searchForm) {
+    var defaultTxt = "Press '/' to focus" ;
+    return searchForm ?
+      (searchForm.dataset.placeholder || defaultTxt) :
+      defaultTxt;
+  };
+  Runner.prototype.setupSearchInput = function() {
+    var doc = this;
+    var theSearchFormId = doc.searchFormId;
+    if(theSearchFormId) {
+      var theSearchForm = document.getElementById(theSearchFormId);
+      var placeholder = doc.getPlaceholder(theSearchForm);
+      if(theSearchForm.tagName.toUpperCase() !== 'FORM') {
+        console.error('You provided a searchFormId that does not exist');
+        return;
+      }
+      theSearchForm.className += ' reload-search-form';
+      theSearchForm.onsubmit="";
+      var theSearchInput = document.createElement('input');
+      theSearchInput.name = 'focus';
+      theSearchInput.className = 'reload-search-input';
+      theSearchInput.placeholder = placeholder;
+      theSearchInput.required = true;
+      var theSearchClear = document.createElement('button');
+      theSearchClear.tabindex=1;
+      theSearchClear.className='reload-close-icon';
+      theSearchClear.type='reset';
+      var theSearchStyle = document.createElement('div');
+      theSearchStyle.className = 'reload-search-style';
+      theSearchForm.appendChild(theSearchInput);
+      theSearchForm.appendChild(theSearchClear);
+      theSearchForm.appendChild(theSearchStyle);
+      this.nodes.theSearchInput = theSearchInput;
+      this.nodes.theSearchForm = theSearchForm;
+    }
+  };
   Runner.prototype.setupSearch = function() {
     var doc = this;
-    var theInputId = doc.searchInputId;
-    var theSearchHitsId = doc.searchHitsId;
-    var $theInput = $('#' + theInputId);
-    var $theSearchHits = $('#' + theSearchHitsId);
-    doc.setupHitsInnerContainer();
-    if($theInput.length && $theSearchHits.length) {
-      var hitsInnerContainer = this.getHitsInnerContainer();
-      // TODO: Sync this 51px with $header-height-1
-      $theSearchHits[0].style.cssText += "position: sticky; top: 51px; z-index: 100;"
-      var theParentForm = $theInput[0].parentNode;
-      theParentForm = theParentForm.tagName.toUpperCase() === 'FORM' ? theParentForm : null;
-      function adjustSearchVisible() {
-        if(!doc.shouldSearchBeVisible()) {
-          hitsInnerContainer.className = 'reload-hits reload-hits-hidden';
+    doc.setupSearchInput();
+    doc.setupHitsScrollContainer();
+    var theSearchForm = doc.nodes.theSearchForm;
+    var theSearchHits = doc.nodes.theSearchHits;
+    var theSearchInput = doc.nodes.theSearchInput;
+    if(!theSearchForm || !theSearchHits) {
+      return;
+    }
+    var hitsScrollContainer = doc.nodes.theHitsScrollContainer;
+    doc.nodes.theSearchHits.style.cssText += "position: sticky; top: " + (headerHeight - 1) + "px; z-index: 100;"
+    function setupGlobalKeybindings() {
+      window.document.body.addEventListener('keypress', e => {
+        if(document.activeElement !== theSearchInput && e.key === "/") {
+          theSearchInput.focus()
+          e.preventDefault();
+         }
+      });
+    }
+    function adjustSearchVisible() {
+      if(!doc.shouldSearchBeVisible()) {
+        hitsScrollContainer.className = 'reload-hits-scroll reload-hits-scroll-hidden';
+      } else {
+        hitsScrollContainer.className = 'reload-hits-scroll';
+      }
+    }
+    function runSearchReset(e) {
+      theSearchInput.value = '';
+      doc.searchState.rawTextInput = '';
+      doc.searchState.normalizedTextInputForResults = '';
+      doc.searchState.userRequestedCursor.indexInResults = null;
+      adjustSearchVisible();
+    }
+    function runSearchWithValue(e) {
+      var raw = theSearchInput.value;
+      var value = theSearchInput.value.trim();
+      doc.searchState.rawTextInput = raw;
+      doc.searchState.normalizedTextInputForResults = value;
+      doc.searchState.userRequestedCursor.indexInResults = null;
+      doc.searchState.userRequestedClose = false;
+      adjustSearchVisible();
+      if(value !== "") {
+        var results = searchDocs(doc, value);
+        doc.searchState.results = results;
+        doc.updateSearchResultsList(value, results);
+      }
+    }
+    function handleInputKeydown(evt) {
+      var effectiveCursorPosition = doc.effectiveCursorPosition();
+      var isVisible = doc.shouldSearchBeVisible();
+      var nextIndex;
+      if (evt.keyCode === 40 /* down */) {
+        if(!isVisible && $(theSearchInput).val().trim() !== "") {
+          // Promote to zero on first down if neg one
+          nextIndex = Math.max(doc.searchState.userRequestedCursor.indexInResults, 0);
+          doc.searchState.userRequestedClose = false;
+          adjustSearchVisible();
         } else {
-          hitsInnerContainer.className = 'reload-hits';
+          nextIndex = (effectiveCursorPosition < doc.searchState.results.length - 1)
+            ? effectiveCursorPosition + 1
+            : doc.searchState.userRequestedCursor.indexInResults;
+          evt.preventDefault();
         }
       }
-      function runSearchReset(e) {
-        $theInput[0].value = '';
-        doc.searchState.rawTextInput = '';
-        doc.searchState.normalizedTextInputForResults = '';
-        doc.searchState.userRequestedCursor.indexInResults = null;
-        adjustSearchVisible();
-      }
-      function runSearchWithValue(e) {
-        var raw = $theInput[0].value;
-        var value = $theInput[0].value.trim();
-        doc.searchState.rawTextInput = raw;
-        doc.searchState.normalizedTextInputForResults = value;
-        doc.searchState.userRequestedCursor.indexInResults = null;
-        doc.searchState.userRequestedClose = false;
-        adjustSearchVisible();
-        if(value !== "") {
-          var results = searchDocs(value);
-          doc.searchState.results = results;
-          doc.updateSearchResultsList(value, results);
+      if (evt.keyCode === 38 /* up */) {
+        if(effectiveCursorPosition !== -1) {
+          nextIndex = effectiveCursorPosition - 1;
+        } else {
+          nextIndex = doc.searchState.userRequestedCursor.indexInResults;
         }
       }
-      function handleInputKeydown(evt) {
-        var effectiveCursorPosition = doc.effectiveCursorPosition();
-        var isVisible = doc.shouldSearchBeVisible();
-        var nextIndex;
-        if (evt.keyCode === 40 /* down */) {
-          if(!isVisible && $theInput.val().trim() !== "") {
-            // Promote to zero on first down if neg one
-            nextIndex = Math.max(doc.searchState.userRequestedCursor.indexInResults, 0);
-            doc.searchState.userRequestedClose = false;
-            adjustSearchVisible();
-          } else {
-            nextIndex = (effectiveCursorPosition < doc.searchState.results.length - 1)
-              ? effectiveCursorPosition + 1
-              : doc.searchState.userRequestedCursor.indexInResults;
-            evt.preventDefault();
-          }
+      if (evt.keyCode === 38 || evt.keyCode === 40) {
+        doc.searchState.userRequestedCursor.indexInResults = nextIndex;
+        doc.updateSearchResultsList(
+          doc.searchState.normalizedTextInputForResults,
+          doc.searchState.results
+        );
+      }
+      if (evt.key === 'Tab') {
+        if(!isVisible || $(theSearchInput).val().trim() === "") {
+          return;  // And do the default
         }
-        if (evt.keyCode === 38 /* up */) {
+        if(evt.shiftKey) {
           if(effectiveCursorPosition !== -1) {
             nextIndex = effectiveCursorPosition - 1;
+            // Will allow shift-tabbing out of search box if it unhighlights.
+            // No reason to unhighlight a cursor *without* tabbing away from
+            // search input.
+            nextIndex > -1 && evt.preventDefault();
           } else {
             nextIndex = doc.searchState.userRequestedCursor.indexInResults;
           }
+        } else {
+          nextIndex = (effectiveCursorPosition < doc.searchState.results.length - 1)
+            ? effectiveCursorPosition + 1
+            : doc.searchState.userRequestedCursor.indexInResults;
+          evt.preventDefault();
         }
-        if (evt.keyCode === 38 || evt.keyCode === 40) {
-          doc.searchState.userRequestedCursor.indexInResults = nextIndex;
-          doc.updateSearchResultsList(
-            doc.searchState.normalizedTextInputForResults,
-            doc.searchState.results
-          );
-        }
-        if (evt.key === 'Tab') {
-          if(!isVisible || $theInput.val().trim() === "") {
-            return;  // And do the default
-          }
-          if(evt.shiftKey) {
-            if(effectiveCursorPosition !== -1) {
-              nextIndex = effectiveCursorPosition - 1;
-              // Will allow shift-tabbing out of search box if it unhighlights.
-              // No reason to unhighlight a cursor *without* tabbing away from
-              // search input.
-              nextIndex > -1 && evt.preventDefault();
-            } else {
-              nextIndex = doc.searchState.userRequestedCursor.indexInResults;
-            }
-          } else {
-            nextIndex = (effectiveCursorPosition < doc.searchState.results.length - 1)
-              ? effectiveCursorPosition + 1
-              : doc.searchState.userRequestedCursor.indexInResults;
-            evt.preventDefault();
-          }
-          doc.searchState.userRequestedCursor.indexInResults = nextIndex;
-          doc.updateSearchResultsList(
-            doc.searchState.normalizedTextInputForResults,
-            doc.searchState.results
-          );
-        } else if(isVisible && evt.keyCode === 13) {  // enter
-          var itemForCursor = doc.getItemForCursor(effectiveCursorPosition);
-          $(itemForCursor).trigger('click');
-        } else if(!isVisible && evt.keyCode === 13) {
-          doc.searchState.userRequestedClose = false;
-          adjustSearchVisible();
-        } else if(evt.keyCode === 27) {    // esc
-          // Let's make escape toggle
-          doc.searchState.userRequestedClose = !doc.searchState.userRequestedClose;
-          adjustSearchVisible();
-        }
-      }
-      function inputFocus(e) {
-        doc.searchState.waitingToFocusAfterScrollDone = false;
-        doc.searchState.userRequestedClose = false;
-        if(doc.searchState.userRequestedCursor.indexInResults === -1) {
-          doc.searchState.userRequestedCursor.indexInResults = null;
-          doc.updateSearchResultsList(
-            doc.searchState.normalizedTextInputForResults,
-            doc.searchState.results
-          );
-        }
-        adjustSearchVisible();
-      }
-      theParentForm && $(theParentForm).on('reset', runSearchReset);
-      $theInput.on('focus', inputFocus);
-      $theInput.on('input', runSearchWithValue);
-      $theInput.on('keydown', handleInputKeydown);
-      $(theParentForm).on('submit', function(e) {
-        e.preventDefault();
-      });
-    } else {
-      if(theInputId || theSearchHitsId) {
-        console.error(
-          'You supplied options searchInputId or searchHitsId but we could not find one of the elements ' +
-          theInputId +
-          '/' +
-          theSearchHitsId
+        doc.searchState.userRequestedCursor.indexInResults = nextIndex;
+        doc.updateSearchResultsList(
+          doc.searchState.normalizedTextInputForResults,
+          doc.searchState.results
         );
-      } else {
-        console.error('Neither options searchInputId or searchHitsId were supplied');
+      } else if(isVisible && evt.keyCode === 13) {  // enter
+        var itemForCursor = doc.getItemForCursor(effectiveCursorPosition);
+        $(itemForCursor).trigger('click');
+      } else if(!isVisible && evt.keyCode === 13) {
+        doc.searchState.userRequestedClose = false;
+        adjustSearchVisible();
+      } else if(evt.keyCode === 27) {
+        // console.log('local escape');
+        // // Let's make escape close and blur
+        // $(theSearchInput).blur();
+        // doc.searchState.userRequestedClose = !doc.searchState.userRequestedClose;
+        // adjustSearchVisible();
+      } else if(evt.keyCode === 67 && evt.ctrlKey) {    // esc or ctrl-c
+        // But ctrl-c can toggle without losing focus
+        // doc.searchState.userRequestedClose = !doc.searchState.userRequestedClose;
+        // adjustSearchVisible();
       }
     }
+    function inputBlur(e) {
+      console.log('blur input');
+      var focusedPlaceholder = doc.getPlaceholder(doc.nodes.theSearchForm);
+      doc.searchState.lastInputBlurTime = Date.now();
+      theSearchInput.placeholder = focusedPlaceholder;
+    }
+    function inputFocus(e) {
+      if(window['reload-header']) {
+        window['reload-header'].scrollIntoView({behavior: 'smooth'});
+      }
+      var focusedPlaceholder = doc.getFocusedPlaceholder(doc.nodes.theSearchForm);
+      theSearchInput.placeholder = focusedPlaceholder;
+      doc.searchState.waitingToFocusAfterScrollDone = false;
+      doc.searchState.userRequestedClose = false;
+      if(doc.searchState.userRequestedCursor.indexInResults === -1) {
+        doc.searchState.userRequestedCursor.indexInResults = null;
+        doc.updateSearchResultsList(
+          doc.searchState.normalizedTextInputForResults,
+          doc.searchState.results
+        );
+      }
+      adjustSearchVisible();
+    }
+    $(theSearchForm).on('reset', runSearchReset);
+    $(theSearchForm).on('submit', function(e) {
+      e.preventDefault();
+    });
+    // TODO: Rembember last focused element so that escape can jump back to it.
+    // Ctrl-c can toggle open, and Esc can toggle open + focus.
+    // When hitting enter it can reset the "last focused" memory.
+    $(theSearchInput).on('focus', inputFocus);
+    $(theSearchInput).on('blur', inputBlur);
+
+    $(theSearchInput).on('input', runSearchWithValue);
+    $(theSearchInput).on('keydown', handleInputKeydown);
+    document.addEventListener('keydown', function (evt) {
+      if(evt.keyCode === 27) {
+        console.log('global escape');
+        // Let's make escape close and blur
+        if(document.activeElement === doc.nodes.theSearchInput) {
+          $(theSearchInput).blur();
+        }
+        if(!doc.searchState.userRequestedClose) {
+          doc.searchState.userRequestedClose = true;
+        }
+        adjustSearchVisible();
+      } else if(evt.keyCode === 67 && evt.ctrlKey) {    // esc or ctrl-c
+        // But ctrl-c can toggle without losing focus
+        doc.searchState.userRequestedClose = !doc.searchState.userRequestedClose;
+        adjustSearchVisible();
+      }
+    });
+    setupGlobalKeybindings();
   };
 
   /**
@@ -1416,6 +1797,8 @@ else if(
     // perform resizing etc.
     $(doc.root).on('flatdoc:ready', function(e) {
       doc.setupSearch();
+      // Need to focus the window so global keyboard shortcuts are heard.
+      $(window).focus()
     });
     if(window.location.pathname.indexOf('.dev.html') !== (window.location.pathname.length - '.dev.html'.length)) {
       $(doc.root).trigger('flatdoc:style-ready');
@@ -1459,7 +1842,11 @@ else if(
         if(markdown[0] === ')' && markdown[1] === '\n') {
           markdown = markdown.substring(2);
         }
-        var data = Flatdoc.parser.parse(markdown, doc.highlight);
+        var markdownNormalizedYaml = normalizeYamlMarkdownComments(markdown);
+        var markdownAndHeader = parseYamlHeader(markdownNormalizedYaml);
+        console.log(markdownAndHeader.headerProps);
+        // Parse out the YAML header if present.
+        var data = Flatdoc.parser.parse(doc, markdownAndHeader.markdown, doc.highlight);
         doc.applyData(data, doc);
         var id = location.hash.substr(1);
         if (id) {
